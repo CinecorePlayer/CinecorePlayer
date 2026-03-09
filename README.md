@@ -95,6 +95,9 @@ The core playback experience is already usable, and several advanced features ar
 - **MPCVR backend currently not working**  
   MPC Video Renderer support is present at project level, but it is **not currently functional**.
 
+- **Info currently not working**  
+  Info is present at project level, but it is **currently partially functional**.
+
 ---
 
 ## 🚧 Current limitations
