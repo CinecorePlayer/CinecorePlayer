@@ -91,9 +91,6 @@ The core playback experience is already usable, and several advanced features ar
 - **Audio graphs in exclusive PCM mode**  
   In audio-only playback, graphs currently work only in **non-exclusive PCM** mode.
 
-- **DLNA module**  
-  The DLNA implementation is still highly incomplete and may be unstable or error-prone.
-
 - **MPCVR backend currently not working**  
   MPC Video Renderer support is present at project level, but it is **not currently functional**.
 
@@ -114,7 +111,6 @@ The core playback experience is already usable, and several advanced features ar
 - **Favorites**
 - **Playlists**
 - **YouTube integration**
-- **DLNA improvements**
 - **Expanded renderer settings**
 - **Additional HUD refinements**
 - **English localization**
