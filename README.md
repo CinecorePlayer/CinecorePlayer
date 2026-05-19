@@ -120,18 +120,3 @@ Many other additions are currently in development.
 
 ---
 
-## 📄 License
-
-This project is released under the  
-**Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License**.
-
-You are free to:
-- Share and adapt the material
-
-Under the following terms:
-- **Attribution** — appropriate credit must be given
-- **NonCommercial** — no commercial use is allowed
-- **ShareAlike** — derivatives must be distributed under the same license
-
-Full license text:  
-https://creativecommons.org/licenses/by-nc-sa/4.0/
