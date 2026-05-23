@@ -22,23 +22,32 @@ Beta is set to be released soon. Actual files are not updated, and are in a pret
 
 ## 📸 Screenshots
 
+## Home
 ![Home](Screenshots/home.png)
 
+## Library
 ![Library](Screenshots/library.png)
 
+## Audio Graphs
 ![Audio Graphs](Screenshots/graphs.png)
 
+## Video Player
 ![Video Player](Screenshots/player.png)
 
+## Info Overlay
 ![Info Overlay](Screenshots/info.png)
 
+## Photo Player
 ![Photo Player](Screenshots/photo_player.png)
 
+## DLNA
 ![DLNA](Screenshots/dlna.png)
 
+## Settings
 ![Settings](Screenshots/settings.png)
 
-![Remote](Screenshots/remote.png)
+## Remote
+![Remote](Screenshots/remote.jpeg)
 
 ---
 
