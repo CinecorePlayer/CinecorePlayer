@@ -1,6 +1,6 @@
 # 🎬 Cinecore Player 2025
 
-[![License](https://img.shields.io/badge/License-Source--Available%20Non--Commercial-blue)](https://polyformproject.org/licenses/noncommercial/1.0.0/)
+[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0/)
 [![.NET 9.0](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)](#️-system-requirements-end-users)
 [![Status](https://img.shields.io/badge/status-alpha-orange)](#-project-status-truthful-current)
