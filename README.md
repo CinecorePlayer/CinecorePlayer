@@ -16,7 +16,7 @@ The player also includes a **TMDB-integrated library**, an **online remote contr
 Designed with **audiophiles** in mind, Cinecore Player includes a dedicated **Audio Mode** with real-time visualizations such as **oscilloscope** and **spectrum analyzer**.  
 Audio output supports both **bitstream** and **PCM**, with compatibility for **exclusive** and **non-exclusive** modes.
 
-Beta is set to be released soon.
+Beta is set to be released soon. Actual file are not updated, and are in a pretty bad state. I'm uploading the new version soon.
 
 ---
 
