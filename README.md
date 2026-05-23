@@ -8,15 +8,16 @@
 [![Downloads](https://img.shields.io/github/downloads/NicoLando024/CinecorePlayer/total.svg)](https://github.com/NicoLando024/CinecorePlayer/releases)
 [![Stars](https://img.shields.io/github/stars/NicoLando024/CinecorePlayer.svg?style=social&label=Star)](https://github.com/NicoLando024/CinecorePlayer)
 
-A **free**, **non-commercial** media player for **Windows**, built in **C# / .NET 9.0** and powered by **MadVR**.  
-It features intelligent **HDR management** and supports multiple high-end **video renderer backends**, including **madVR**, **MPC Video Renderer (MPCVR)**, and **EVR**.
+Cinecore Player is a **free**, **source-available**, **non-commercial** media player for Windows, built in **C# / .NET 9.0** and focused on high-quality playback with **madVR**.
 
-The player also includes a **TMDB-integrated library**, an **online remote controller**, a dedicated **Cinema Mode**, and **resume playback** functionality to continue content from where it was left off.
+Designed as a modern DirectShow-based player, Cinecore combines advanced video rendering, intelligent **HDR management**, and support for multiple renderer backends, including **madVR**, **MPC Video Renderer (MPCVR)**, and **EVR**.
 
-Designed with **audiophiles** in mind, Cinecore Player includes a dedicated **Audio Mode** with real-time visualizations such as **oscilloscope** and **spectrum analyzer**.  
-Audio output supports both **bitstream** and **PCM**, with compatibility for **exclusive** and **non-exclusive** modes.
+Beyond playback, Cinecore includes a growing set of media-center features such as a **TMDB-integrated library**, an **online remote controller**, **Cinema Mode**, resume playback, playlist/favorites support, and many other interface and usability improvements.
 
-Beta is set to be released soon. Actual files are not updated, and are in a pretty bad state. I'm uploading the new version soon.
+The player is also built with **audiophiles** in mind, featuring a dedicated **Audio Mode** with real-time visualizations such as oscilloscope and spectrum analyzer. Audio output supports both **bitstream** and **PCM**, with compatibility for **exclusive** and **non-exclusive** output modes.
+
+> **Development status:** Cinecore Player is currently in active development.  
+> A public beta is planned soon. The files currently available in this repository may be outdated or incomplete, and a significantly updated version will be uploaded soon.
 
 ---
 
