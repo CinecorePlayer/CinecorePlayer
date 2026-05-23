@@ -26,11 +26,19 @@ Beta is set to be released soon. Actual files are not updated, and are in a pret
 
 ![Library](Screenshots/library.png)
 
-![Audio Graphs](Screenshots/audio-graphs.png)
+![Audio Graphs](Screenshots/graphs.png)
 
-![Video Player](Screenshots/video-player.png)
+![Video Player](Screenshots/player.png)
 
-![Info Overlay](Screenshots/info-overlay.png)
+![Info Overlay](Screenshots/info.png)
+
+![Photo Player](Screenshots/photo_player.png)
+
+![DLNA](Screenshots/dlna.png)
+
+![Settings](Screenshots/settings.png)
+
+![Remote](Screenshots/remote.png)
 
 ---
 
@@ -38,6 +46,7 @@ Beta is set to be released soon. Actual files are not updated, and are in a pret
 
 Cinecore Player is currently in **alpha**.  
 The core playback experience is already usable, and several advanced features are implemented, but some modules are still incomplete, experimental, or not yet fully polished.
+New version isn't on github yet. Current files are an old version different from the photos shown.
 
 ---
 
@@ -69,47 +78,40 @@ The core playback experience is already usable, and several advanced features ar
 - **Resume playback**  
   Content can be resumed from the point where playback was previously stopped.
 
-- **Audio graphs (partial implementation)**  
-  Audio analysis graphs are currently functional only with **non-exclusive PCM**.
+- **Audio graphs**
+  Functional. 
 
 - **Photo viewer**  
-  Fully operational, with future quality-of-life improvements planned.
+  Fully operational.
 
 - **HUD / On-Screen Display**  
   Generally functional, though still in need of refinement.
+
+- **SKIP Intro/Outro (next episode) for TV Series**  
+  Functional.
+
+- **DLNA**  
+  Generally functional.
 
 ---
 
 ## ⚠️ Known issues
 
-- **Renderer settings not yet integrated**  
+- **Renderer settings not yet fully integrated**  
   Player-side configuration panels are still incomplete. Users must currently adjust settings directly inside each renderer.
 
 - **HUD responsiveness and visual glitches**  
   The HUD works, but responsiveness is not yet ideal and occasional graphical artifacts may still occur.
 
-- **Audio graphs in exclusive PCM mode**  
-  In audio-only playback, graphs currently work only in **non-exclusive PCM** mode.
-
 - **MPCVR backend currently not working**  
   MPC Video Renderer support is present at project level, but it is **not currently functional**.
 
----
-
-## 🚧 Current limitations
-
-- **3D-to-2D conversion**  
-  Currently functional only with **EVR**. **madVR** support is planned.
-
-- **Player settings coverage**  
-  Several configuration sections are only partially implemented.
+- **YouTube not working**  
 
 ---
 
 ## 🛠️ In development
 
-- **Favorites**
-- **Playlists**
 - **YouTube integration**
 - **Expanded renderer settings**
 - **Additional HUD refinements**
