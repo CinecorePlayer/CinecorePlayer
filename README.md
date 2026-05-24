@@ -83,13 +83,16 @@ New version isn't on github yet. Current files are an old version different from
   Remote control functionality is implemented and usable during playback.
 
 - **Cinema Mode**  
-  Includes a pre-playback movie placeholder screen, demo playback for **Dolby Atmos / DTS:X MA / THX**, **WLED** integration for turning off room lighting, and then movie playback.
+  Includes a pre-playback movie placeholder screen, demo playback for **Dolby Atmos / DTS:X MA / THX**, **WLED** integration   for turning off room lighting, and then movie playback.
 
 - **Resume playback**  
   Content can be resumed from the point where playback was previously stopped.
 
 - **Audio graphs**
-  Functional. 
+  Functional.
+
+- **Lyrics**  
+  Generally functional.
 
 - **Photo viewer**  
   Fully operational.
@@ -125,7 +128,7 @@ New version isn't on github yet. Current files are an old version different from
 - **YouTube integration**
 - **Expanded renderer settings**
 - **Additional HUD refinements**
-- **English localization**
+- **New features**
 - **General QoL enhancements across the UI**
 
 Many other additions are currently in development.
