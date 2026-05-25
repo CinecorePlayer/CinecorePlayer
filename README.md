@@ -124,6 +124,8 @@ New version isn't on github yet. Current files are an old version different from
 
 - **libmpv integration**
 - **Realtime HDR analyzer**
+- **HUD personalization options**
+- **Netflix like HUD mode**
 - **360 rendering**
 - **YouTube integration**
 - **Expanded renderer settings**
