@@ -122,6 +122,7 @@ New version isn't on github yet. Current files are an old version different from
 
 ## 🛠️ In development
 
+- **libmpv integration**
 - **YouTube integration**
 - **Expanded renderer settings**
 - **Additional HUD refinements**
