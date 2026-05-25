@@ -116,9 +116,6 @@ New version isn't on github yet. Current files are an old version different from
 - **HUD responsiveness and visual glitches**  
   The HUD works, but responsiveness is not yet ideal and occasional graphical artifacts may still occur.
 
-- **MPCVR backend currently not working**  
-  MPC Video Renderer support is present at project level, but it is **not currently functional**.
-
 - **YouTube not working**  
 
 ---
