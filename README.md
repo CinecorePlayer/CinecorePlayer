@@ -10,7 +10,7 @@
 
 Cinecore Player is a **free**, **source-available**, **non-commercial** media player for Windows, built in **C# / .NET 9.0** and focused on high-quality playback with **madVR**.
 
-Designed as a modern DirectShow-based player, Cinecore combines advanced video rendering, intelligent **HDR management**, and support for multiple renderer backends, including **madVR**, **MPC Video Renderer (MPCVR)**, **EVR** and soon **libmpv**.
+Designed as a modern DirectShow-based player, Cinecore combines advanced video rendering, intelligent **HDR management**, and support for multiple renderer backends, including **madVR**, **MPC Video Renderer (MPCVR)**, **EVR** and **libmpv**.
 
 Beyond playback, Cinecore includes a growing set of media-center features such as a **TMDB-integrated library**, an **online remote controller**, **Cinema Mode**, resume playback, playlist/favorites support, and many other interface and usability improvements.
 
@@ -70,7 +70,7 @@ New version isn't on github yet. Current files are an old version different from
 
 ## ✅ Working features
 
-- **Video playback via madVR, mpcvr and EVR**  
+- **Video playback via madVR, mpcvr, EVR and libmpv**  
   Core playback is stable on these renderers.
 
 - **Audio playback (PCM & Bitstream)**  
@@ -120,7 +120,6 @@ New version isn't on github yet. Current files are an old version different from
 
 ## 🛠️ In development
 
-- **libmpv integration**
 - **Realtime HDR analyzer**
 - **HUD personalization options**
 - **Netflix like HUD mode**
