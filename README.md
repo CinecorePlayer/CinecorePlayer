@@ -4,7 +4,6 @@
 [![.NET 9.0](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)](#️-system-requirements-end-users)
 [![Status](https://img.shields.io/badge/status-alpha-orange)](#-project-status-truthful-current)
-[![Build](https://img.shields.io/github/actions/workflow/status/NicoLando024/CinecorePlayer/build.yml?branch=main)](https://github.com/NicoLando024/CinecorePlayer/actions)
 [![Downloads](https://img.shields.io/github/downloads-pre/NicoLando024/CinecorePlayer/total.svg)](https://github.com/NicoLando024/CinecorePlayer/releases)
 [![Stars](https://img.shields.io/github/stars/NicoLando024/CinecorePlayer?style=flat&logo=github)](https://github.com/NicoLando024/CinecorePlayer)
 [![Alpha Available](https://img.shields.io/badge/alpha-download%20now-brightgreen?logo=github)](https://github.com/NicoLando024/CinecorePlayer/releases/tag/alpha1)
