@@ -63,7 +63,7 @@ The core playback experience is already usable, and several advanced features ar
 
 - **Operating system:** Windows
 - **Runtime:** .NET 9.0
-- **Renderer support:** madVR / EVR / MPCVR and soon libmpv
+- **Renderer support:** madVR / EVR / MPCVR and libmpv
 
 ---
 
