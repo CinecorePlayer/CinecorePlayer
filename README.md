@@ -120,6 +120,7 @@ New version isn't on github yet. Current files are an old version different from
 
 ## 🛠️ In development
 
+- **PCM audio tweaks**
 - **Realtime HDR analyzer**
 - **HUD personalization options**
 - **Netflix like HUD mode**
