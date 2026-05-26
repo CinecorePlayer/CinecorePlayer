@@ -64,13 +64,13 @@ New version isn't on github yet. Current files are an old version different from
 
 - **Operating system:** Windows
 - **Runtime:** .NET 9.0
-- **Renderer support:** madVR / EVR / MPCVR backend support is present in the player, although not all backends are currently equally functional
+- **Renderer support:** madVR / EVR / MPCVR and soon libmpv
 
 ---
 
 ## ✅ Working features
 
-- **Video playback via madVR and EVR**  
+- **Video playback via madVR, mpcvr and EVR**  
   Core playback is stable on these renderers.
 
 - **Audio playback (PCM & Bitstream)**  
@@ -116,8 +116,6 @@ New version isn't on github yet. Current files are an old version different from
 - **HUD responsiveness and visual glitches**  
   The HUD works, but responsiveness is not yet ideal and occasional graphical artifacts may still occur.
 
-- **YouTube not working**  
-
 ---
 
 ## 🛠️ In development
@@ -134,5 +132,7 @@ New version isn't on github yet. Current files are an old version different from
 - **General QoL enhancements across the UI**
 
 Many other additions are currently in development.
+
+## ANY SUGGESTION IS APPRECIATED
 
 ---
