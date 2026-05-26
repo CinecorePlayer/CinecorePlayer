@@ -17,7 +17,7 @@ Beyond playback, Cinecore includes a growing set of media-center features such a
 The player is also built with **audiophiles** in mind, featuring a dedicated **Audio Mode** with real-time visualizations such as oscilloscope and spectrum analyzer. Audio output supports both **bitstream** and **PCM**, with compatibility for **exclusive** and **non-exclusive** output modes.
 
 > **Development status:** Cinecore Player is currently in active development.  
-> A public beta is planned soon. The files currently available in this repository may be outdated or incomplete, and a significantly updated version will be uploaded soon.
+> A public alpha has been published.
 
 ---
 
@@ -56,7 +56,6 @@ The player is also built with **audiophiles** in mind, featuring a dedicated **A
 
 Cinecore Player is currently in **alpha**.  
 The core playback experience is already usable, and several advanced features are implemented, but some modules are still incomplete, experimental, or not yet fully polished.
-New version isn't on github yet. Current files are an old version different from the photos shown.
 
 ---
 
@@ -116,6 +115,10 @@ New version isn't on github yet. Current files are an old version different from
 - **HUD responsiveness and visual glitches**  
   The HUD works, but responsiveness is not yet ideal and occasional graphical artifacts may still occur.
 
+- **YouTube integration not working**
+
+- **MPCVR HUD not working**
+  
 ---
 
 ## 🛠️ In development
