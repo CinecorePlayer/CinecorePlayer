@@ -6,7 +6,8 @@
 [![Status](https://img.shields.io/badge/status-alpha-orange)](#-project-status-truthful-current)
 [![Build](https://img.shields.io/github/actions/workflow/status/NicoLando024/CinecorePlayer/build.yml?branch=main)](https://github.com/NicoLando024/CinecorePlayer/actions)
 [![Downloads](https://img.shields.io/github/downloads-pre/NicoLando024/CinecorePlayer/total.svg)](https://github.com/NicoLando024/CinecorePlayer/releases)
-[![Stars](https://img.shields.io/github/stars/NicoLando024/CinecorePlayer.svg?style=social&label=Star)](https://github.com/NicoLando024/CinecorePlayer)
+[![Stars](https://img.shields.io/github/stars/NicoLando024/CinecorePlayer?style=flat&logo=github)](https://github.com/NicoLando024/CinecorePlayer)
+[![Alpha Available](https://img.shields.io/badge/alpha-download%20now-brightgreen?logo=github)](https://github.com/NicoLando024/CinecorePlayer/releases/tag/alpha1)
 
 Cinecore Player is a **free**, **source-available**, **non-commercial** media player for Windows, built in **C# / .NET 9.0** and focused on high-quality playback with **madVR**.
 
