@@ -52,6 +52,12 @@ THIS IS A TEMPORARY VERSION. HUD IS BEING REWORKED.
 ## Remote
 ![Remote](Screenshots/remote.jpeg)
 
+## NEW HUD SPOILERS
+
+![Home](Screenshots/home_new.png)
+![Library](Screenshots/library_new.png)
+
+
 ---
 
 ## 📌 Project status (truthful current)
