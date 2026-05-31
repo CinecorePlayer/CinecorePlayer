@@ -25,6 +25,11 @@ THIS IS A TEMPORARY VERSION. HUD IS BEING REWORKED.
 
 ## 📸 Screenshots
 
+## NEW HUD (NOT AVAILABLE YET)
+
+![Home](Screenshots/Screenshot 2026-05-31 152924.png)
+![Library](Screenshots/Screenshot 2026-05-31 153223.png)
+
 ## Home
 ![Home](Screenshots/home.png)
 
@@ -51,12 +56,6 @@ THIS IS A TEMPORARY VERSION. HUD IS BEING REWORKED.
 
 ## Remote
 ![Remote](Screenshots/remote.jpeg)
-
-## NEW HUD SPOILERS
-
-![Home](Screenshots/home_new.png)
-![Library](Screenshots/library_new.png)
-
 
 ---
 
