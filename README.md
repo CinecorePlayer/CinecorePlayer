@@ -27,8 +27,8 @@ THIS IS A TEMPORARY VERSION. HUD IS BEING REWORKED.
 
 ## NEW HUD (NOT AVAILABLE YET)
 
-![Home](Screenshots/Screenshot 2026-05-31 152924.png)
-![Library](Screenshots/Screenshot 2026-05-31 153223.png)
+![Home](Screenshots/home_new.png)
+![Library](Screenshots/library_new.png)
 
 ## Home
 ![Home](Screenshots/home.png)
