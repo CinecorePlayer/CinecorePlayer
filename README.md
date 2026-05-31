@@ -17,6 +17,7 @@ Beyond playback, Cinecore includes a growing set of media-center features such a
 The player is also built with **audiophiles** in mind, featuring a dedicated **Audio Mode** with real-time visualizations such as oscilloscope and spectrum analyzer. Audio output supports both **bitstream** and **PCM**, with compatibility for **exclusive** and **non-exclusive** output modes.
 
 THIS IS A TEMPORARY VERSION. HUD IS BEING REWORKED.
+A FIXED VERSION WITH A NEW HUD IS SET TO BE RELEASED THIS WEEK
 
 > **Development status:** Cinecore Player is currently in active development.  
 > A public alpha has been published.
