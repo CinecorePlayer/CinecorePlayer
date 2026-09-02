@@ -27,7 +27,7 @@ Audio output supports both **bitstream** and **PCM**, with compatibility for **e
 ## 📸 Screenshots
 
 > ### 🚧 New HUD
-> The screenshots below show the upcoming Cinecore interface and may contain features or visual changes that are **not yet available in the current public alpha**.
+> The screenshots below show the upcoming Cinecore interface, including many features and visual changes that are **not yet available in the current public alpha**.
 
 ### 🏠 Home
 
