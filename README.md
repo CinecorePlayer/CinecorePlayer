@@ -16,8 +16,7 @@ Beyond playback, Cinecore includes a growing set of media-center features such a
 
 The player is also built with **audiophiles** in mind, featuring a dedicated **Audio Mode** with real-time visualizations such as oscilloscope and spectrum analyzer. Audio output supports both **bitstream** and **PCM**, with compatibility for **exclusive** and **non-exclusive** output modes.
 
-THIS IS A TEMPORARY VERSION. HUD IS BEING REWORKED.
-A FIXED VERSION WITH A NEW HUD IS SET TO BE RELEASED THIS WEEK
+V2 will be out soon, it need just a little more of time in order to correct bugs!
 
 > **Development status:** Cinecore Player is currently in active development.  
 > A public alpha has been published.
@@ -28,35 +27,29 @@ A FIXED VERSION WITH A NEW HUD IS SET TO BE RELEASED THIS WEEK
 
 ## NEW HUD (NOT AVAILABLE YET)
 
-![Home](Screenshots/home_new.png)
-![Library](Screenshots/library_new.png)
-
 ## Home
-![Home](Screenshots/home.png)
+![Home](Screenshots/Screenshot 2026-09-02 114007.png)
 
 ## Library
-![Library](Screenshots/library.png)
+![Library](Screenshots/Screenshot 2026-09-02 114031.png)
 
-## Audio Graphs
-![Audio Graphs](Screenshots/graphs.png)
+## Film Details
+![Film Details](Screenshots/Screenshot 2026-09-02 114031.png)
 
 ## Video Player
-![Video Player](Screenshots/player.png)
+![Video Player](Screenshots/Screenshot 2026-09-02 123048.png)
+
+## Audio Graphs
+![Audio Graphs](Screenshots/Screenshot 2026-09-02 120339.png)
 
 ## Info Overlay
-![Info Overlay](Screenshots/info.png)
-
-## Photo Player
-![Photo Player](Screenshots/photo_player.png)
+![Info Overlay](Screenshots/Screenshot 2026-09-02 123115.png)
 
 ## DLNA
-![DLNA](Screenshots/dlna.png)
+![DLNA](Screenshots/Screenshot 2026-09-02 114109.png)
 
-## Settings
-![Settings](Screenshots/settings.png)
-
-## Remote
-![Remote](Screenshots/remote.jpeg)
+## YOUTUBE
+![DLNA](Screenshots/Screenshot 2026-09-02 114131.png)
 
 ---
 
@@ -117,15 +110,11 @@ The core playback experience is already usable, and several advanced features ar
 
 ## ⚠️ Known issues
 
-- **Renderer settings not yet fully integrated**  
-  Player-side configuration panels are still incomplete. Users must currently adjust settings directly inside each renderer.
+- **HUD visual glitches**  
+  The HUD works, but occasional graphical artifacts may still occur.
 
-- **HUD responsiveness and visual glitches**  
-  The HUD works, but responsiveness is not yet ideal and occasional graphical artifacts may still occur.
-
-- **YouTube integration not working**
-
-- **MPCVR HUD not working**
+_ **VARIOUS BUGS**
+  There're still some problems that need to be fixed
   
 ---
 
@@ -134,7 +123,6 @@ The core playback experience is already usable, and several advanced features ar
 - **PCM audio tweaks**
 - **Realtime HDR analyzer**
 - **HUD personalization options**
-- **Netflix like HUD mode**
 - **360 rendering**
 - **YouTube integration**
 - **Expanded renderer settings**
