@@ -20,14 +20,14 @@ The player is also built with **audiophiles** in mind, featuring a dedicated **A
 Audio output supports both **bitstream** and **PCM**, with compatibility for **exclusive** and **non-exclusive** output modes.
 
 > **Development status:** Cinecore Player is currently in active development.  
-> A public alpha is already available, while **V2 is currently in development** and will focus on bug fixes, UI improvements, and new features.
+> A public alpha is already available, while **Beta V1 is currently in development**, focusing on bug fixes, UI improvements, new features, and overall refinement.
 
 ---
 
 ## 📸 Screenshots
 
-> ### 🚧 New HUD
-> The screenshots below show the upcoming Cinecore interface (Cinecore Beta V1), including many features and visual changes that are **not yet available in the current public alpha**.
+> ### 🚧 Beta V1 Interface
+> The screenshots below show the upcoming **Cinecore Beta V1** interface, including many features and visual changes that are **not yet available in the current public alpha**.
 
 ### 🏠 Home
 
@@ -76,7 +76,6 @@ Audio output supports both **bitstream** and **PCM**, with compatibility for **e
 ![Cinecore Player YouTube](Screenshots/Screenshot%202026-09-02%20114131.png)
 
 ---
----
 
 ## 🌍 Localization
 
@@ -91,11 +90,13 @@ The interface language can be changed directly from the application settings.
 
 ## 📌 Project Status
 
-Cinecore Player is currently in **alpha**.
+Cinecore Player is currently in active development.
+
+The latest publicly available release is an **alpha**, while development has now moved toward **Beta V1**.
 
 The core playback experience is already usable, and several advanced features have been implemented. However, some modules are still incomplete, experimental, or not yet fully polished.
 
-Development is currently focused on improving stability, expanding renderer support, refining the new HUD, and introducing additional media-center functionality.
+Development is currently focused on improving stability, expanding renderer support, refining the new HUD, improving audio and video handling, and introducing additional media-center functionality.
 
 ---
 
@@ -163,7 +164,7 @@ It currently includes:
 
 - Pre-playback movie placeholder screen
 - **Dolby Atmos** demo playback
-- **DTS:X MA** demo playback
+- **DTS:X / DTS-HD MA** demo playback
 - **THX** demo playback
 - **WLED integration**
 - Automatic room-light control
@@ -185,7 +186,8 @@ Current visualizations include:
 
 - Oscilloscope
 - Spectrum analyzer
-- And more...
+- Additional visualization modes
+
 ---
 
 ### 🎤 Lyrics
@@ -204,7 +206,7 @@ The integrated photo viewer is fully operational.
 
 The Cinecore HUD is generally functional and provides playback information and controls directly over video content.
 
-A redesigned HUD is currently under development.
+A completely redesigned HUD is being introduced with **Beta V1**.
 
 ---
 
@@ -222,7 +224,7 @@ DLNA functionality is implemented and generally operational.
 
 ## ⚠️ Known Issues
 
-Cinecore Player is still an **alpha project**, so bugs and incomplete functionality should be expected.
+The currently available public version of Cinecore Player is still an **alpha release**, so bugs and incomplete functionality should be expected.
 
 Current known issues include:
 
@@ -238,7 +240,7 @@ Bug reports and feedback are welcome.
 
 ## 🛠️ In Development
 
-The following features and improvements are currently being developed:
+The following features and improvements are currently being developed for **Beta V1** and future updates:
 
 - **PCM audio improvements**
 - **Real-time HDR analyzer**
@@ -258,22 +260,23 @@ Many additional features are also being tested or planned for future versions.
 
 ---
 
-## 🚧 Version 2
+## 🚧 Beta V1
 
-**Cinecore Player V2** is currently in active development.
+**Cinecore Player Beta V1** is currently in active development.
 
-The new version will focus primarily on:
+Beta V1 represents a major evolution over the current public alpha and focuses primarily on:
 
 - A redesigned HUD
-- UI improvements
+- Major UI improvements
 - Better playback stability
-- Renderer configuration improvements
+- Expanded renderer configuration
 - Audio improvements
+- Playback refinements
 - Bug fixes
 - New media-center functionality
 - General quality-of-life improvements
 
-The screenshots shown above represent the direction of the upcoming interface and may differ from the currently available public alpha.
+The screenshots shown above represent the current direction of **Beta V1** and may still differ from the final public release.
 
 ---
 
@@ -283,7 +286,7 @@ Every suggestion is appreciated.
 
 If you find a bug, have an idea for a new feature, or want to suggest an improvement, feel free to open an **Issue** on GitHub.
 
-Feedback is especially useful during the current alpha stage of development.
+Feedback is especially useful during the current development stage.
 
 ---
 
