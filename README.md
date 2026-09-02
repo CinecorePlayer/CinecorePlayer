@@ -27,7 +27,7 @@ Audio output supports both **bitstream** and **PCM**, with compatibility for **e
 ## 📸 Screenshots
 
 > ### 🚧 New HUD
-> The screenshots below show the upcoming Cinecore interface, including many features and visual changes that are **not yet available in the current public alpha**.
+> The screenshots below show the upcoming Cinecore interface (Cinecore Beta V1), including many features and visual changes that are **not yet available in the current public alpha**.
 
 ### 🏠 Home
 
@@ -185,7 +185,7 @@ Current visualizations include:
 
 - Oscilloscope
 - Spectrum analyzer
-
+- And more...
 ---
 
 ### 🎤 Lyrics
@@ -252,6 +252,7 @@ The following features and improvements are currently being developed:
 - **General UI improvements**
 - **Quality-of-life improvements**
 - **Bug fixes and stability improvements**
+- **Automatic audio/video sync detection and correction**
 
 Many additional features are also being tested or planned for future versions.
 
