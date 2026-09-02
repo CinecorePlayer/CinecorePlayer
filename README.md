@@ -7,6 +7,7 @@
 [![Downloads](https://img.shields.io/github/downloads-pre/NicoLando024/CinecorePlayer/total.svg)](https://github.com/NicoLando024/CinecorePlayer/releases)
 [![Stars](https://img.shields.io/github/stars/NicoLando024/CinecorePlayer?style=flat&logo=github)](https://github.com/NicoLando024/CinecorePlayer)
 [![Alpha Available](https://img.shields.io/badge/alpha-download%20now-brightgreen?logo=github)](https://github.com/NicoLando024/CinecorePlayer/releases/tag/alpha1)
+[![Languages](https://img.shields.io/badge/languages-English%20%7C%20Italian-4C9EEB)](#-localization)
 
 Cinecore Player is a **free**, **source-available**, and **non-commercial** media player for Windows, built in **C# / .NET 9.0** and focused on high-quality playback with **madVR**.
 
@@ -73,6 +74,18 @@ Audio output supports both **bitstream** and **PCM**, with compatibility for **e
 ### 📺 YouTube
 
 ![Cinecore Player YouTube](Screenshots/Screenshot%202026-09-02%20114131.png)
+
+---
+---
+
+## 🌍 Localization
+
+Cinecore Player currently supports two interface languages:
+
+- 🇬🇧 **English**
+- 🇮🇹 **Italian**
+
+The interface language can be changed directly from the application settings.
 
 ---
 
