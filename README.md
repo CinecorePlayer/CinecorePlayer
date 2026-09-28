@@ -5,7 +5,7 @@
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)](#%EF%B8%8F-system-requirements)
 [![Development](https://img.shields.io/badge/development-Beta%20V1-yellow)](#-beta-v1)
 [![Status](https://img.shields.io/badge/status-experimental%20%7C%20not%20production--ready-orange)](#%EF%B8%8F-beta-v1-limitations)
-[![Downloads](https://img.shields.io/github/downloads-pre/NicoLando024/CinecorePlayer/total.svg)](https://github.com/CinecorePlayer/CinecorePlayer/releases)
+[![Downloads](https://img.shields.io/github/downloads-pre/CinecorePlayer/CinecorePlayer/total.svg)](https://github.com/CinecorePlayer/CinecorePlayer/releases)
 [![Stars](https://img.shields.io/github/stars/CinecorePlayer/CinecorePlayer?style=flat&logo=github)](https://github.com/CinecorePlayer/CinecorePlayer)
 [![Languages](https://img.shields.io/badge/languages-English%20%7C%20Italian-4C9EEB)](#-localization)
 
