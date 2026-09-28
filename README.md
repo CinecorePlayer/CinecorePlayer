@@ -28,11 +28,15 @@ The gallery below shows the **current Beta V1 interface**. All screenshots come 
 
 ### 🏠 Home, Library & Discovery
 
-#### Home & Spotlight
+#### Home
 
-The Home screen is built around the new **Spotlight**, a large featured-media area that gives selected titles a proper hero presentation instead of treating the home page as a simple grid.
+![Cinecore Player Home](Screenshots/Screenshot%202026-09-28%20105605.png)
 
-Spotlight can surface a title with:
+#### Spotlight
+
+**Spotlight** is a separate Cinecore experience dedicated to featured media.
+
+It gives selected titles a large cinematic presentation with:
 
 - Large backdrop artwork
 - Title, year and runtime
@@ -42,9 +46,9 @@ Spotlight can surface a title with:
 - Direct **Play** and **Details** actions
 - Carousel navigation between highlighted titles
 
-It is designed to make the Home screen feel closer to a complete media-center front page while still keeping playback one action away.
+Spotlight is designed as its own discovery surface rather than as part of the standard Home layout.
 
-![Cinecore Player Home and Spotlight](Screenshots/Screenshot%202026-09-28%20105605.png)
+![Cinecore Player Spotlight](Screenshots/Screenshot%202026-09-28%20124315.png)
 
 #### Film Library
 
@@ -114,7 +118,7 @@ Beta V1 has reached the point where most of the **main Cinecore experience is al
 
 The audio-analysis side is now connected to the real PCM path rather than being just a visual prototype, while video playback already includes working seek controls, previews, overlays and track management. Subtitle handling has also been cleaned up significantly, including the explicit Off state and forced-subtitle selection by language.
 
-The areas that still need the most work are the ones that depend heavily on the user's setup. **madVR, HDR, refresh-rate switching, GPU/driver combinations, displays and external filters** can still behave differently from one machine to another, so broader real-world testing is still needed. Synchronized lyrics are much better than before but can still lose alignment with live or alternate versions, repeated choruses and difficult vocal detection. Online metadata and services naturally remain dependent on the network and on the external providers behind them.
+The areas that still need the most work are mostly around optimization, edge cases and features that are still being actively refined. **HDR handling and refresh-rate switching** still need broader real-world testing across different system configurations. Synchronized lyrics are much better than before but can still lose alignment with live or alternate versions, repeated choruses and difficult vocal detection. Online metadata and services naturally remain dependent on the network and on the external providers behind them.
 
 So while **Beta V1 is dramatically further ahead than the old Alpha**, it is still a beta in the literal sense: there are bugs to find, performance to improve, rough edges to polish and hardware combinations that have not been tested yet. It is **not production-ready**, but the core of the project is now much closer to the Cinecore I actually want to build.
 
@@ -122,15 +126,13 @@ So while **Beta V1 is dramatically further ahead than the old Alpha**, it is sti
 
 ## ✨ Beta V1 Features
 
-### 🌟 Spotlight & Home Discovery
+### 🌟 Spotlight
 
-Beta V1 introduces a new **Spotlight** at the top of the Home screen.
+Beta V1 introduces **Spotlight** as a separate discovery experience within Cinecore.
 
-Rather than opening directly into a wall of covers, Cinecore can give highlighted titles a larger cinematic presentation with backdrop artwork, key technical information, synopsis and cast details.
+Spotlight gives selected titles a larger cinematic presentation with backdrop artwork, key technical information, synopsis and cast details. It also works as a carousel for browsing multiple highlighted titles, with immediate access to **Play** and **Details**.
 
-The Spotlight also acts as a carousel, allowing multiple featured titles to be browsed directly from the Home screen, with immediate access to **Play** and **Details**.
-
-This sits alongside the rest of the Home experience, including continue-watching and library rows, and is intended to make Cinecore feel more like a complete media center rather than only a file browser or playback frontend.
+It is separate from the standard Home page and is intended to provide a more focused, cinematic way to discover and launch featured media.
 
 ---
 
@@ -393,7 +395,7 @@ The interface language can be changed directly from the application settings.
   - EVR
   - libmpv playback path
 
-Some advanced functionality depends on the selected renderer, installed filters, GPU, drivers, display and system configuration.
+Some advanced functionality can still depend on the selected playback path, installed filters, display and system configuration. **madVR itself is working normally in the current Beta V1 build.**
 
 ### Building from source
 
@@ -422,9 +424,8 @@ Beta V1 should be treated as an **advanced development build**, not as finished 
 
 Despite the enormous jump over the old Alpha, current limitations include:
 
-- No guarantee of identical behavior across all GPUs, drivers and display chains
-- Renderer-specific differences between madVR, MPCVR, EVR and libmpv
-- madVR, HDR and refresh-rate switching still requiring broader configuration testing
+- Some playback behavior can still differ between MPCVR, EVR and the libmpv path
+- HDR handling and refresh-rate switching still require broader configuration testing
 - Remaining performance and responsiveness optimization
 - UI details that still need refinement and consistency work
 - Synchronized-lyrics edge cases
@@ -447,8 +448,7 @@ Main areas include:
 
 - Playback performance and stability
 - PCM audio improvements
-- Renderer-specific compatibility work
-- madVR behavior after pause/resume and other playback transitions
+- Renderer-specific compatibility work outside the stable madVR path
 - HDR handling and analysis
 - Refresh-rate switching reliability
 - Expanded renderer settings
@@ -476,7 +476,7 @@ Compared with the old Alpha, it represents a major step forward across virtually
 ### Included in Beta V1
 
 - Redesigned application interface
-- **Home Spotlight / featured-media carousel**
+- **Spotlight / featured-media carousel**
 - Redesigned HUD / playback overlays
 - TMDb-integrated movie and TV library
 - Search, scanning, artwork, details and cast metadata
