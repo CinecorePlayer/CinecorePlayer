@@ -1,0 +1,70 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <DebugType>portable</DebugType>
+    <Platforms>AnyCPU;x86;x64</Platforms>
+    <NoWarn>$(NoWarn);NU1701;WFO1000</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="bin\**\*.cs" />
+    <Compile Remove="obj\**\*.cs" />
+    <Compile Remove="IntroOutroDetector\**\*.cs" />
+    <Compile Remove="LyricsTester\**\*.cs" />
+    <Compile Remove="LyricsSynchronizationTests\**\*.cs" />
+    <Compile Remove="AudioVideoSync\**\*.cs" />
+    <Compile Include="AudioVideoSync\SyncModels.cs" />
+    <Compile Include="AudioVideoSync\SyncDetector.cs" />
+    <Compile Include="AudioVideoSync\FfmpegAudioExtractor.cs" />
+    <Compile Include="AudioVideoSync\ExternalToolLocator.cs" />
+    <Compile Remove="artifacts\**\*.cs" />
+    <None Remove="LyricsTester\bin\**\*.*" />
+    <None Remove="LyricsTester\obj\**\*.*" />
+    <None Remove="LyricsSynchronizationTests\bin\**\*.*" />
+    <None Remove="LyricsSynchronizationTests\obj\**\*.*" />
+    <None Include="third-parties\**\*.*" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="LyricsSynchronization\**\*.py" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="LICENSE" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="THIRD-PARTY-CREDITS.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="IntroOutroDetector\bin\Release\net8.0\IntroOutroDetector.*" Link="IntroOutroDetector\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+
+    <PackageReference Include="DirectShowLib" Version="1.0.0" />
+    <PackageReference Include="FFmpeg.AutoGen" Version="7.1.1" />
+
+    <PackageReference Include="LiveChartsCore.SkiaSharpView.WinForms" Version="2.0.0-rc6.1" />
+    <PackageReference Include="Makaretu.Dns" Version="2.0.1" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3719.77" />
+
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="Svg.Skia" Version="3.4.1" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
+
+    <PackageReference Include="SkiaSharp" Version="3.119.1" />
+    <PackageReference Include="SkiaSharp.HarfBuzz" Version="3.119.0" />
+    <PackageReference Include="SkiaSharp.Views.WindowsForms" Version="3.119.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.1" />
+    <PackageReference Include="WindowsAPICodePack-Core" Version="1.1.2" />
+
+    <Content Include="Assets\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Resource Include="Splash\*.png" />
+  </ItemGroup>
+
+  <Target Name="RemoveUnusedWebView2WpfReference" BeforeTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <Reference Remove="@(Reference)" Condition="'%(Reference.Filename)' == 'Microsoft.Web.WebView2.Wpf'" />
+    </ItemGroup>
+  </Target>
+
+</Project>
