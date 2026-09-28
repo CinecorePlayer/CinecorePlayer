@@ -28,9 +28,23 @@ The gallery below shows the **current Beta V1 interface**. All screenshots come 
 
 ### 🏠 Home, Library & Discovery
 
-#### Home
+#### Home & Spotlight
 
-![Cinecore Player Home](Screenshots/Screenshot%202026-09-28%20105605.png)
+The Home screen is built around the new **Spotlight**, a large featured-media area that gives selected titles a proper hero presentation instead of treating the home page as a simple grid.
+
+Spotlight can surface a title with:
+
+- Large backdrop artwork
+- Title, year and runtime
+- Video / HDR and audio-format badges
+- Synopsis
+- Cast information
+- Direct **Play** and **Details** actions
+- Carousel navigation between highlighted titles
+
+It is designed to make the Home screen feel closer to a complete media-center front page while still keeping playback one action away.
+
+![Cinecore Player Home and Spotlight](Screenshots/Screenshot%202026-09-28%20105605.png)
 
 #### Film Library
 
@@ -107,6 +121,18 @@ So while **Beta V1 is dramatically further ahead than the old Alpha**, it is sti
 ---
 
 ## ✨ Beta V1 Features
+
+### 🌟 Spotlight & Home Discovery
+
+Beta V1 introduces a new **Spotlight** at the top of the Home screen.
+
+Rather than opening directly into a wall of covers, Cinecore can give highlighted titles a larger cinematic presentation with backdrop artwork, key technical information, synopsis and cast details.
+
+The Spotlight also acts as a carousel, allowing multiple featured titles to be browsed directly from the Home screen, with immediate access to **Play** and **Details**.
+
+This sits alongside the rest of the Home experience, including continue-watching and library rows, and is intended to make Cinecore feel more like a complete media center rather than only a file browser or playback frontend.
+
+---
 
 ### 🎞️ Media Library
 
@@ -450,6 +476,7 @@ Compared with the old Alpha, it represents a major step forward across virtually
 ### Included in Beta V1
 
 - Redesigned application interface
+- **Home Spotlight / featured-media carousel**
 - Redesigned HUD / playback overlays
 - TMDb-integrated movie and TV library
 - Search, scanning, artwork, details and cast metadata
