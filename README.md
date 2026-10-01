@@ -14,7 +14,7 @@ Cinecore Player is a **free**, **source-available**, and **non-commercial** medi
 Cinecore combines a DirectShow-based playback path with **libmpv**, renderer support for **madVR**, **MPC Video Renderer (MPCVR)** and **EVR**, HDR handling, a TMDb-powered media library, its own **audio engine for music**, real-time audio analysis, browser remote control and Cinema Mode.
 
 > ### 🚧 Development status
-> **Beta 2 (version 0.2.0) is the current version of Cinecore Player.** It builds on Beta 1 and adds the Cinecore Audio Engine, native settings pages for the external renderers and filters, a reworked reviews page, a new installer and a refreshed interface.
+> **Beta 2 (version 1.1) is the current version of Cinecore Player.** It builds on Beta 1 and adds the Cinecore Audio Engine, native settings pages for the external renderers and filters, a reworked reviews page, a new installer and a refreshed interface.
 >
 > Beta 2 is still an **experimental development build and is not production-ready**. It has not been validated across the full range of GPUs, renderers, displays, audio devices and network setups. Bugs, renderer-specific behavior and rough edges should be expected.
 
