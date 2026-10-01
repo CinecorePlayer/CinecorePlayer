@@ -76,6 +76,8 @@ A sheet for the video being played shows what the file declares (MaxCLL, MaxFALL
 
 The analysis uses its own decoder, so it does not depend on the renderer and does not disturb playback. Results are cached per file.
 
+![HDR Analyzer](Screenshots/hdr-analyzer.png)
+
 ### 🎬 Trakt
 
 - Connect a Trakt account with a code; no password is typed into the player
@@ -154,12 +156,6 @@ Rules that send a command to a device when playback **starts, pauses, resumes, s
 ---
 
 ## 🆕 New in Beta 2
-
-<!--
-  Screenshots for this section go in Screenshots/ with the file names used below.
-  Add the image with that exact name and it appears here; delete the line for any
-  screenshot you decide not to include.
--->
 
 ### 🎚️ Cinecore Audio Engine
 
