@@ -2,29 +2,117 @@
 
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0)
 [![.NET 9.0](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
-[![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)](#%EF%B8%8F-system-requirements)
-[![Development](https://img.shields.io/badge/development-Beta%20V1-yellow)](#-beta-v1)
-[![Status](https://img.shields.io/badge/status-experimental%20%7C%20not%20production--ready-orange)](#%EF%B8%8F-beta-v1-limitations)
+[![Platform](https://img.shields.io/badge/platform-Windows%20x64-0078D6?logo=windows&logoColor=white)](#%EF%B8%8F-system-requirements)
+[![Development](https://img.shields.io/badge/development-Beta%202-yellow)](#-beta-2)
+[![Status](https://img.shields.io/badge/status-experimental%20%7C%20not%20production--ready-orange)](#%EF%B8%8F-beta-2-limitations)
 [![Downloads](https://img.shields.io/github/downloads-pre/CinecorePlayer/CinecorePlayer/total.svg)](https://github.com/CinecorePlayer/CinecorePlayer/releases)
 [![Stars](https://img.shields.io/github/stars/CinecorePlayer/CinecorePlayer?style=flat&logo=github)](https://github.com/CinecorePlayer/CinecorePlayer)
 [![Languages](https://img.shields.io/badge/languages-English%20%7C%20Italian-4C9EEB)](#-localization)
 
 Cinecore Player is a **free**, **source-available**, and **non-commercial** media player for Windows, built in **C# / .NET 9.0** and focused on high-quality local playback, home-cinema use and a modern media-center experience.
 
-Cinecore combines a DirectShow-based playback path with **libmpv**, advanced renderer support including **madVR**, **MPC Video Renderer (MPCVR)** and **EVR**, intelligent HDR handling, a TMDb-powered media library, Audio Mode, browser remote control, Cinema Mode and a growing set of media-center features.
+Cinecore combines a DirectShow-based playback path with **libmpv**, renderer support for **madVR**, **MPC Video Renderer (MPCVR)** and **EVR**, HDR handling, a TMDb-powered media library, its own **audio engine for music**, real-time audio analysis, browser remote control and Cinema Mode.
 
 > ### 🚧 Development status
-> **Beta V1 is the current version of Cinecore Player.** The previous Alpha has been retired and no longer represents or defines the current project.
+> **Beta 2 (version 0.2.0) is the current version of Cinecore Player.** It builds on Beta 1 and adds the Cinecore Audio Engine, native settings pages for the external renderers and filters, a reworked reviews page, a new installer and a refreshed interface.
 >
-> **Compared with the old Alpha, Beta V1 is years ahead in interface, feature set and overall functionality.** It is effectively a major generation jump for Cinecore rather than a small incremental update.
->
-> That does **not** mean Beta V1 is finished. It is still an **experimental development build and is not production-ready**. The application is being optimized, polished and validated across different GPUs, renderers, displays, audio configurations and network environments. Bugs, renderer-specific behavior, performance issues, incomplete edge-case handling and experimental features should still be expected.
+> Beta 2 is still an **experimental development build and is not production-ready**. It has not been validated across the full range of GPUs, renderers, displays, audio devices and network setups. Bugs, renderer-specific behavior and rough edges should be expected.
 
 ---
 
-## 📸 Beta V1 Screenshots
+## 📥 Download
 
-The gallery below shows the **current Beta V1 interface**. All screenshots come from the present development generation and are grouped by the part of Cinecore they represent.
+Download **`CinecorePlayer-Beta2-Setup.exe`** from the [Releases page](https://github.com/CinecorePlayer/CinecorePlayer/releases) and run it.
+
+The installer:
+
+- runs in English or Italian and follows the Windows 11 light or dark theme;
+- includes Cinecore, the .NET runtime, FFmpeg, libmpv and yt-dlp, so nothing else has to be installed first;
+- lets you select the optional third-party components one by one: LAV Filters, MPC Audio Decoder, MPC Audio Renderer, madVR, MPC Video Renderer, XySubFilter and, only if it is missing, the WebView2 Runtime (downloaded from Microsoft);
+- installs over a previous version, closing Cinecore if it is running;
+- registers Cinecore in "Installed apps"; uninstalling also unregisters the filters and leaves your data in `%APPDATA%\CinecorePlayer2025`.
+
+Administrator approval is required for the default Program Files location and for registering the filters. Some bundled third-party installers are unsigned and open with their own setup windows.
+
+---
+
+## 🆕 New in Beta 2
+
+<!--
+  Screenshots for this section go in Screenshots/beta2/ with the file names used below.
+  Add the image with that exact name and it appears here; delete the line for any
+  screenshot you decide not to include.
+-->
+
+### 🎚️ Cinecore Audio Engine
+
+Music now plays through Cinecore's own engine: FFmpeg decoding, high-precision soxr resampling and a double-precision DSP chain, with shared or exclusive WASAPI output. In exclusive mode the device runs at the file's sample rate, bypassing the Windows mixer. The engine can be switched off to use mpv instead.
+
+- Equalizer: 10-band graphic, 31-band third-octave graphic, or parametric (frequency, gain, Q and shape, including low and high shelf), edited directly on the graph
+- ReplayGain per track or per album, with preamp
+- Headphone crossfeed, stereo width, balance and mono sum
+- Loudness compensation for low-volume listening
+- Clip protection: true-peak limiter plus automatic headroom
+
+![Cinecore Audio Engine settings](Screenshots/beta2/audio-engine.png)
+
+![Parametric equalizer](Screenshots/beta2/equalizer.png)
+
+### 📟 VU Meters & Analysis
+
+Analog-style VU meters with automatic calibration that follows the loudness of the track, or fixed reference levels. Readouts cover true peak, clipping, loudness (LUFS), dynamics and limiter activity, and the analysis data can be exported. Each chart now explains what it shows.
+
+![VU meters](Screenshots/beta2/vu-meters.png)
+
+### 🎛️ Native Renderer & Filter Settings
+
+madVR, LAV Video, LAV Audio, MPC Video Renderer and XySubFilter have settings pages inside Cinecore, in the same style as the player's own settings. madVR options such as chroma upscaling, NGU, image doubling, dithering, HDR handling and smooth motion can be changed without opening the madVR panel. The original panels remain available for everything else.
+
+![madVR settings page](Screenshots/beta2/settings-madvr.png)
+
+![MPC Video Renderer settings page](Screenshots/beta2/settings-mpcvr.png)
+
+### ⭐ Ratings & Reviews
+
+Movie and series pages show ratings from **IMDb**, **Letterboxd** and **Metacritic**, with Letterboxd and Metacritic reviews and spoiler warnings.
+
+![Ratings and reviews](Screenshots/beta2/reviews.png)
+
+### 🧪 Audio Synchronization
+
+Automatic alignment compares several scenes of the two tracks, using audio correlation and, optionally, a local transcription. It detects tracks that run at a different speed (24 vs 23.976 fps, PAL 25 fps) and reports when a fixed delay cannot align them. The manual delay has a live preview, and nothing is saved before Apply.
+
+![Audio synchronization](Screenshots/beta2/audio-sync.png)
+
+### 📚 Library & Playlists
+
+- New playlist sheet with name, description and cover; a playlist can mix films, series, music and photos
+- Search by title, series or cast, and an "All sources" filter
+- Empty libraries explain what to add; disconnected drives are shown as such
+- Artist photos and album backgrounds in the music library
+- TMDb and Spotify credentials are set in Settings, with a built-in key or a personal one
+
+![New playlist sheet](Screenshots/beta2/playlist-sheet.png)
+
+### 🖼️ Photos, Lyrics & Interface
+
+- Reworked photo viewer: slideshow, wheel zoom, drag to pan, arrow-key navigation
+- Genius added as a lyrics source; a new lyrics clock makes line changes and word highlighting smooth
+- 3D playback through madVR and MPC Video Renderer, including 3D-to-2D, swap eyes and output format
+- Subtitle position options: custom position, height on screen, moving subtitles into the black bars
+- Spotlight is fully navigable from the phone remote, and the remote exposes the new audio and renderer settings
+- New typography, anti-aliased rounded corners on Windows 11, smoother transitions and no banding in gradients
+- The interface starts in Italian when Windows is in Italian, otherwise in English
+
+![Photo viewer](Screenshots/beta2/photo-viewer.png)
+
+![Browser remote, Spotlight navigation](Screenshots/beta2/remote-spotlight.png)
+
+---
+
+## 📸 Screenshots
+
+The screenshots below were taken on Beta 1. The layout of these screens is the same in Beta 2; fonts, corners and some details have changed.
 
 ### 🏠 Home, Library & Discovery
 
@@ -34,19 +122,7 @@ The gallery below shows the **current Beta V1 interface**. All screenshots come 
 
 #### Spotlight
 
-**Spotlight** is a separate Cinecore experience dedicated to featured media.
-
-It gives selected titles a large cinematic presentation with:
-
-- Large backdrop artwork
-- Title, year and runtime
-- Video / HDR and audio-format badges
-- Synopsis
-- Cast information
-- Direct **Play** and **Details** actions
-- Carousel navigation between highlighted titles
-
-Spotlight is designed as its own discovery surface rather than as part of the standard Home layout.
+**Spotlight** is a separate discovery surface for featured media. It presents each title with large backdrop artwork, year and runtime, video/HDR and audio-format badges, synopsis and cast, with direct **Play** and **Details** actions and a carousel to move between titles.
 
 ![Cinecore Player Spotlight](Screenshots/Screenshot%202026-09-28%20124315.png)
 
@@ -61,8 +137,6 @@ Spotlight is designed as its own discovery surface rather than as part of the st
 #### Viewing Diary
 
 ![Cinecore Player Viewing Diary](Screenshots/Screenshot%202026-09-28%20110338.png)
-
----
 
 ### 🎵 Music, Player & Audio Analysis
 
@@ -82,8 +156,6 @@ Spotlight is designed as its own discovery surface rather than as part of the st
 
 ![Cinecore Player Lyrics](Screenshots/Screenshot%202026-09-28%20110202.png)
 
----
-
 ### 🌐 Network & Remote Control
 
 #### DLNA Server Selection
@@ -94,8 +166,6 @@ Spotlight is designed as its own discovery surface rather than as part of the st
 
 ![Cinecore Player Browser Remote](Screenshots/WhatsApp%20Image%202026-09-28%20at%2011.11.36.jpeg)
 
----
-
 ### ⚙️ Settings
 
 #### General Settings
@@ -104,298 +174,141 @@ Spotlight is designed as its own discovery surface rather than as part of the st
 
 ---
 
-## 📌 Project Status
-
-Cinecore Player is in **active Beta V1 development**.
-
-The previous Alpha has been retired. **Beta V1 is now the version that represents the project**, and it has moved dramatically beyond the old Alpha with a redesigned interface, broader media-center functionality, deeper audio and video controls, improved navigation, more complete library workflows and a much larger set of playback features.
-
-The objective of the current phase is no longer simply to add basic functionality. Most major user-facing systems are already present; work is now focused on **optimization, reliability, compatibility, edge cases, renderer-specific behavior, UI polish and real-world validation**.
-
-### Where Beta V1 stands today
-
-Beta V1 has reached the point where most of the **main Cinecore experience is already there**. The library, photo browsing, queue, music navigation, playback overlays, subtitle controls, audio-analysis pages and browser remote are all present and usable in the current build.
-
-The audio-analysis side is now connected to the real PCM path rather than being just a visual prototype, while video playback already includes working seek controls, previews, overlays and track management. Subtitle handling has also been cleaned up significantly, including the explicit Off state and forced-subtitle selection by language.
-
-The areas that still need the most work are mostly around optimization, edge cases and features that are still being actively refined. **HDR handling and refresh-rate switching** still need broader real-world testing across different system configurations. Synchronized lyrics are much better than before but can still lose alignment with live or alternate versions, repeated choruses and difficult vocal detection. Online metadata and services naturally remain dependent on the network and on the external providers behind them.
-
-So while **Beta V1 is dramatically further ahead than the old Alpha**, it is still a beta in the literal sense: there are bugs to find, performance to improve, rough edges to polish and hardware combinations that have not been tested yet. It is **not production-ready**, but the core of the project is now much closer to the Cinecore I actually want to build.
-
----
-
-## ✨ Beta V1 Features
-
-### 🌟 Spotlight
-
-Beta V1 introduces **Spotlight** as a separate discovery experience within Cinecore.
-
-Spotlight gives selected titles a larger cinematic presentation with backdrop artwork, key technical information, synopsis and cast details. It also works as a carousel for browsing multiple highlighted titles, with immediate access to **Play** and **Details**.
-
-It is separate from the standard Home page and is intended to provide a more focused, cinematic way to discover and launch featured media.
-
----
+## ✨ Features
 
 ### 🎞️ Media Library
 
-The library supports movies, TV series, video, music and photos, with features including:
+Libraries for movies, TV series, videos, music and photos:
 
-- Library scanning and search
-- Cover artwork and media presentation
-- Movie and TV detail pages
-- Cast information
-- **TMDb metadata integration**
-- Favorites
-- Viewing diary/history
-- Resume playback
-- Playlists
-- Editable playback queue
-- Queue management directly from the overlay
-
-The primary library, photo, queue and music-navigation flows have already been exercised through interface tests in the current Beta V1 codebase.
-
----
+- Library scanning and search by title, series or cast
+- **TMDb metadata**: artwork, details and cast
+- Ratings and reviews from IMDb, Letterboxd and Metacritic
+- Spotlight carousel for featured titles
+- Favorites and viewing diary/history
+- Resume playback and continue watching
+- Playlists that can mix media types
+- Editable playback queue, also from the playback overlay
 
 ### 🎥 Video Playback
 
-Cinecore supports multiple playback paths and renderers:
+Playback paths and renderers:
 
-- **DirectShow** playback
+- **DirectShow** playback with **madVR**, **MPC Video Renderer (MPCVR)** or **EVR**
 - **libmpv** playback
-- **madVR**
-- **MPC Video Renderer (MPCVR)**
-- **EVR**
-- Local files
-- Network paths
-- Media URLs
-- YouTube sources
+- Local files, network paths, media URLs and YouTube sources (through the bundled yt-dlp and FFmpeg)
 
-Playback-related functionality also includes:
+Playback functions:
 
-- Audio-track selection
-- Subtitle-track selection
-- Forced subtitles based on language
-- HDR options where supported by the active backend
+- Audio-track and subtitle-track selection
+- HDR, 3D and upscaling options where the active renderer and hardware support them
 - Bitstream output
-- Upscaling options where supported by the active backend
-- Seek and native player input handling
+- Native settings pages for madVR, LAV, MPC Video Renderer and XySubFilter
+- Seek timeline with five previews
 - Picture-in-picture mode
-- Five-preview seek timeline
-- On-screen playback controls and overlays
+- On-screen controls, overlays and a playback-information panel
+- Automatic refresh-rate switching
 
-Core playback is usable and substantially more developed than in the old Alpha, but renderer-specific behavior is still one of the main areas requiring broader real-world testing.
+### 💬 Subtitles
 
----
-
-### 🖥️ HUD / On-Screen Display
-
-Beta V1 introduces a major redesign of Cinecore's playback HUD and overlays.
-
-The current implementation includes playback controls, media information, track controls, seek behavior and preview handling directly over the video surface. Native input, seeking, 16:9 overlay geometry and test-video decoding have been specifically checked in the Beta V1 verification pass.
-
-Further visual polish, responsiveness work and renderer-specific validation are still ongoing.
-
----
-
-### 💬 Subtitles & Language Handling
-
-Subtitle management includes:
-
-- Subtitle track selection
-- Explicit **Off** state
+- Track selection with an explicit **Off** state
 - Forced-track selection based on language
-- Selection and disabling during playback
+- Position options: custom position, height on screen, subtitles in the black bars
 
-The forced-subtitle and Off-state logic has been corrected for Beta V1, and selection/disabling have also been tested against real **libmpv** playback.
+### 🔊 Audio
 
----
-
-### 🔊 Audio Playback
-
-Cinecore supports:
-
-- **PCM audio**
-- **Bitstream audio**
-- **Exclusive output**
-- **Non-exclusive output**
+- **Cinecore Audio Engine** for music, with equalizer, ReplayGain, crossfeed, stereo image controls, loudness compensation and clip protection
+- Shared or exclusive WASAPI output
+- PCM and bitstream output for video
 - Audio-track selection
-- Backend-dependent playback and output options
+- Volume and mute control of a network receiver (Denon/Marantz, Onkyo/Integra/Pioneer eISCP, Yamaha MusicCast, UPnP/DLNA RenderingControl)
 
-The PCM path has received additional Beta V1 work and is also used by the real-time audio-analysis system.
+### 🧪 Audio / Video Synchronization
 
----
+- Automatic alignment of an external or second audio track, based on audio correlation and optional local transcription
+- Detection of tracks that run at a different speed
+- Manual delay with live preview
 
-### 🧪 Audio / Video Synchronization & Track Timing
-
-Beta V1 includes **experimental synchronization controls** intended to help with media whose audio does not line up correctly with video.
-
-Current experimental functionality includes:
-
-- **Automatic audio/video sync detection and correction**
-- **Manual audio-track delay / offset adjustment**
-
-These features are **not considered validated or production-ready**. At the current stage, no guarantee is made about how accurately, consistently or reliably automatic correction works across different files, codecs, renderers or playback paths. Manual delay controls are available for testing and correction, but their behavior still needs broader verification as well.
-
-In other words, these controls are part of Beta V1 because they are implemented and being developed — **not because they are already guaranteed to work perfectly**.
-
----
+These controls are **experimental**. Automatic alignment is not guaranteed to be correct for every file, dub or edit; check the result before relying on it.
 
 ### 🎵 Music Mode
 
-Beta V1 includes a much broader music experience built around a global player rather than treating music as a secondary file type.
-
-Current functionality includes:
-
-- Global music player
-- Music-library navigation
+- Global music player and music-library navigation
 - Queue management
-- Lyrics
-- Synchronized lyrics
-- Album and track metadata
-- Real-time audio-analysis pages
-
-The music UI and navigation are part of the main interface flows currently being tested and refined.
-
----
+- Lyrics from LRCLIB, lyrics.ovh and Genius, with automatic synchronization
+- Album and track metadata, artist photos and album backgrounds
 
 ### 📊 Real-Time Audio Analysis
 
-Audio Mode includes real-time visualizations and measurements such as:
-
 - Waveform / oscilloscope
 - Spectrum analyzer
-- Loudness
-- Audio levels
-- Phase
-- Channel balance
-- Additional visualization modes
+- VU meters with true peak, clipping and limiter readouts
+- Loudness (LUFS), RMS level and dynamics
+- Phase correlation and channel balance
+- Export of the analysis data
 
-PCM graph updates have been verified after repeated navigation between pages, with displayed values coming from the real audio sampler rather than placeholder data.
+### 🎤 Lyrics Synchronization
 
----
-
-### 🎤 Lyrics & Automatic Synchronization
-
-Lyrics integration is functional and Beta V1 includes improved synchronization logic.
-
-The synchronization system can still struggle with:
-
-- Alternate versions of the same song
-- Live recordings
-- Repeated choruses
-- Difficult vocal-detection cases
-- Recordings whose structure differs from the reference lyrics
-
-Automatic synchronization may use the Python backend documented in `LyricsSynchronizationTests/README.md`.
-
----
+Lyrics without timings are aligned to the audio in the background. Synchronization can still be off for alternate versions, live recordings, repeated choruses and songs whose structure differs from the reference lyrics. The Python backend is described in `LyricsSynchronizationTests/README.md`.
 
 ### 📱 Browser Remote Control
 
-Cinecore includes a browser-based remote designed for use on the local network.
+A browser-based remote for phones and tablets on the local network:
 
-The remote can expose and control:
-
-- Playback state
-- Playback controls
-- Queue
-- Library access
-- Audio-track selection
-- Subtitle-track selection
-
-Beta V1 testing has specifically covered state recovery after reopening, timeout behavior, state refresh after commands and rejection of stale responses.
-
----
+- Playback state and controls
+- Queue and library access
+- Audio-track and subtitle-track selection
+- Spotlight navigation with D-pad, OK and Back
+- Audio engine and renderer settings
 
 ### 🍿 Cinema Mode
 
-Cinema Mode provides an automated pre-movie home-cinema sequence.
-
-It currently includes:
-
-- Pre-playback movie placeholder screen
-- **Dolby Atmos** demo playback
-- **DTS:X / DTS-HD MA** demo playback
-- **THX** demo playback
-- **WLED integration**
-- Automatic room-light control
-- Automatic transition from demos to the selected movie
-
----
-
-### ⏯️ Resume, Queue & Playback Continuity
-
-Cinecore can resume media from the previously stored playback position and integrates playback continuity with the wider library experience.
-
-Beta V1 also includes editable queue handling and overlay-based queue interaction, making playback state more deeply integrated into the main UI than in the old Alpha.
-
----
+- Pre-playback placeholder screen with the movie's artwork
+- Optional pre-movie demo clip
+- **WLED** integration for room-light control
+- Automatic transition to the selected movie
 
 ### ⏭️ Skip Intro / Outro
 
-TV-series playback includes **Skip Intro / Outro** functionality, with support for progressing automatically to the next episode.
-
----
+TV-series playback can skip intros and outros and move on to the next episode.
 
 ### 🖼️ Photo Viewer
 
-The integrated photo viewer is implemented and its main navigation flow is included in the current Beta V1 interface testing.
-
----
+Photo browsing with slideshow, zoom, pan and keyboard navigation.
 
 ### 📡 DLNA & Network Media
 
-DLNA and network-based media workflows are implemented, alongside support for local files, network paths and URLs.
+DLNA/UPnP servers can be browsed and played alongside local files, network paths and URLs. Behavior varies with the network and the server.
 
-As with other network-dependent functionality, final behavior can vary depending on the local network, devices and external services, so broader compatibility testing is still required.
+### ⚙️ Settings
 
----
-
-### 📺 YouTube & Online Sources
-
-YouTube integration is present as part of Cinecore's broader URL and online-media support.
-
-Online functionality depends on connectivity and external services and should still be considered an area under active validation rather than production-certified functionality.
-
----
-
-### ⚙️ Settings & Localization
-
-Cinecore includes integrated settings for the player and its connected services, including:
-
-- Renderer and playback-related options
-- API fields and external-service configuration
-- Theme controls
-- Interface preferences
-- Italian and English localization
+- Player, renderer and audio options
+- TMDb and Spotify credentials
+- Light and dark mode, accent color
+- Italian and English interface
 
 ---
 
 ## 🌍 Localization
 
-Cinecore Player currently supports two interface languages:
+Cinecore Player supports two interface languages:
 
 - 🇬🇧 **English**
 - 🇮🇹 **Italian**
 
-The interface language can be changed directly from the application settings.
+On first start the interface is Italian when Windows is in Italian and English otherwise. The language can be changed in the application settings.
 
 ---
 
 ## 🖥️ System Requirements
 
-### End Users
+### End users
 
-- **Operating System:** Windows x64
-- **Runtime:** .NET 9 Desktop Runtime
-- **Web functionality:** WebView2
-- **Supported / integrated video renderers:**
-  - madVR
-  - MPC Video Renderer (MPCVR)
-  - EVR
-  - libmpv playback path
+- **Operating system:** Windows x64. Rounded window corners and the Segoe UI Variable typeface require Windows 11.
+- **Runtime:** none to install; the installer includes the .NET runtime.
+- **WebView2 Runtime:** needed for WebView-backed pages; the installer offers it when it is missing.
+- **Video renderers:** libmpv is bundled. madVR, MPC Video Renderer and LAV Filters are optional components offered by the installer. EVR is part of Windows.
 
-Some advanced functionality can still depend on the selected playback path, installed filters, display and system configuration. **madVR itself is working normally in the current Beta V1 build.**
+Advanced video features depend on the selected renderer, the installed filters, the GPU drivers and the display.
 
 ### Building from source
 
@@ -412,164 +325,110 @@ Run:
 bin/Release/net9.0-windows/CinecorePlayer2025.exe
 ```
 
-Keep the **entire output directory**. The executable alone does not contain all native DLLs, filters, resources and helper tools required by the application.
+Keep the **entire output directory**: the executable alone does not contain the native DLLs, filters, resources and helper tools the application needs. Optional backends must be in the expected `third-parties` locations or installed on the system.
 
-Optional backends must be available in the expected `third-parties` locations or installed on the system.
+To build the installer, install **Inno Setup 6.6 or later** and run:
 
----
+```powershell
+powershell -ExecutionPolicy Bypass -File .\installer\Build-Installer.ps1
+```
 
-## ⚠️ Beta V1 Limitations
-
-Beta V1 should be treated as an **advanced development build**, not as finished production software.
-
-Despite the enormous jump over the old Alpha, current limitations include:
-
-- Some playback behavior can still differ between MPCVR, EVR and the libmpv path
-- HDR handling and refresh-rate switching still require broader configuration testing
-- Remaining performance and responsiveness optimization
-- UI details that still need refinement and consistency work
-- Synchronized-lyrics edge cases
-- Experimental automatic audio/video sync detection and correction is not yet broadly validated
-- Manual audio-track delay / offset controls still require wider backend and media testing
-- Dependence on external providers for metadata and online functionality
-- Network- and device-specific DLNA behavior
-- Additional stability testing still required for long sessions and unusual media combinations
-- General bug fixing and quality-of-life work still in progress
-
-In short: **Beta V1 is dramatically more complete than the old Alpha, but it is not yet optimized, perfect or production-ready.**
+The installer and `SHA256SUMS.txt` are written to `artifacts\installer`.
 
 ---
 
-## 🛠️ Ongoing Development
+## ⚠️ Beta 2 Limitations
 
-Current work is focused on turning the already feature-rich Beta V1 into a more consistent and robust release.
+Beta 2 is a development build, not finished software.
 
-Main areas include:
-
-- Playback performance and stability
-- PCM audio improvements
-- Renderer-specific compatibility work outside the stable madVR path
-- HDR handling and analysis
-- Refresh-rate switching reliability
-- Expanded renderer settings
-- HUD and overlay refinement
-- UI responsiveness and polish
-- Synchronized-lyrics accuracy
-- Metadata and online-service reliability
-- DLNA metadata and playback consistency
-- Additional media-center functionality
-- Quality-of-life improvements
-- Automatic audio/video sync detection and correction accuracy and reliability
-- Manual audio-track delay / offset validation
-- Bug fixes and regression testing
-
-Future or experimental work may also include features such as **360° video rendering**, further HUD personalization and additional analysis tools.
+- Playback behavior can differ between madVR, MPCVR, EVR and libmpv
+- HDR handling and refresh-rate switching need testing on more configurations
+- The Cinecore Audio Engine is new; exclusive output depends on the audio device and driver
+- Native renderer and filter pages cover the main options, not every setting of the original panels
+- Synchronized lyrics can lose alignment on difficult tracks
+- Automatic audio alignment is experimental
+- Ratings, reviews, metadata and lyrics depend on external providers and on the network
+- DLNA behavior depends on the server and the network
+- Some bundled third-party installers are unsigned
+- Long sessions and unusual media combinations need more stability testing
 
 ---
 
-## 🚧 Beta V1
+## 🚧 Beta 2
 
-**Cinecore Player Beta V1** is the current development generation of Cinecore.
+**Cinecore Player Beta 2 (0.2.0)** is the current development generation.
 
-Compared with the old Alpha, it represents a major step forward across virtually every visible part of the application: the interface has been heavily reworked, the media library is broader, music has become a first-class mode, playback controls are deeper, audio analysis is substantially more capable, remote-control behavior is more robust and many workflows that were previously basic or incomplete are now integrated into a coherent media-center experience.
+### Added in Beta 2
 
-### Included in Beta V1
+- Cinecore Audio Engine for music, with equalizer, ReplayGain, crossfeed, stereo image controls, loudness compensation and clip protection
+- Shared and exclusive WASAPI output
+- Analog-style VU meters and export of analysis data
+- Native settings pages for madVR, LAV Video, LAV Audio, MPC Video Renderer and XySubFilter
+- 3D playback through madVR and MPC Video Renderer
+- Subtitle position options
+- Ratings and reviews from IMDb, Letterboxd and Metacritic
+- Multi-scene automatic audio alignment with speed-mismatch detection
+- New playlist sheet, cast search, source filter and empty-library guidance
+- Genius lyrics source and smoother lyrics timing
+- Reworked photo viewer with slideshow
+- Spotlight navigation and new settings pages in the browser remote
+- New typography, rounded corners and smoother animations
+- Startup language follows Windows
+- New Inno Setup installer in English and Italian
 
-- Redesigned application interface
-- **Spotlight / featured-media carousel**
-- Redesigned HUD / playback overlays
-- TMDb-integrated movie and TV library
-- Search, scanning, artwork, details and cast metadata
-- Favorites and viewing diary/history
-- Resume playback
-- Playlist and editable queue system
-- Local files, network paths and media URLs
-- YouTube integration
-- DirectShow and libmpv playback paths
-- madVR, MPCVR and EVR integration
-- Audio- and subtitle-track controls
-- **Experimental automatic audio/video sync detection and correction**
-- **Experimental manual audio-track delay / offset adjustment**
-- Forced-subtitle language handling
-- HDR, bitstream and backend-dependent upscaling controls
-- Five-preview seek timeline
-- Picture-in-picture
-- Global music player
-- Lyrics and synchronized-lyrics workflow
-- Waveform, spectrum, loudness, levels, phase and balance analysis
-- Browser remote control for playback, queue, library and track selection
-- Cinema Mode with WLED and demo automation
-- Photo viewer
-- Skip Intro / Outro and next-episode behavior
-- Integrated settings, API configuration and themes
-- Italian and English UI
+### Carried over from Beta 1
 
-### What Beta V1 is not yet
+- TMDb-integrated movie and TV library, Spotlight, favorites, viewing diary, resume
+- Playlists and editable queue
+- DirectShow and libmpv playback with madVR, MPCVR and EVR
+- Local files, network paths, media URLs, YouTube and DLNA
+- Audio and subtitle track controls, forced-subtitle handling
+- HDR, bitstream and upscaling controls
+- Five-preview seek timeline and picture-in-picture
+- Global music player, lyrics and real-time audio analysis
+- Browser remote control
+- Cinema Mode with WLED
+- Skip Intro / Outro
+- Italian and English interface
 
-Beta V1 is **not a production-ready release** and should not be presented as one. The current build still requires optimization, compatibility testing, UI polish and broader real-world validation. Some systems — including automatic A/V synchronization and audio-track timing controls — are explicitly experimental and may behave inconsistently or incorrectly depending on the media and playback backend.
-
-The key distinction is that the remaining work is now happening on top of a product that is **far more complete than the old Alpha**. Beta V1 is not merely the old Alpha with a few fixes: it is a substantially expanded version of Cinecore with many new systems already implemented and under active testing.
+Release notes for each version are on the [Releases page](https://github.com/CinecorePlayer/CinecorePlayer/releases).
 
 ---
 
 ## 🧪 Verification & Bug Reports
 
-The Beta V1 codebase includes deterministic lyrics tests, WinForms interface checks, decoder tests and remote-control tests.
+The codebase is checked with deterministic lyrics-synchronization tests, interface checks, measured DSP and decoder checks for the audio engine, and playback regression checks. These do not replace testing on real hardware, which is where reports help most.
 
 When reporting a playback issue, please include:
 
-- Renderer
-- Media format
-- Resolution
-- Windows display scaling
+- Windows version and display scaling
 - GPU
-- Exact steps required to reproduce the issue
+- Renderer
+- Audio output mode (shared, exclusive or bitstream) and device
+- Media format and resolution
+- Exact steps to reproduce the issue
 
-Only include relevant log excerpts and remove personal paths, tokens and credentials before posting them.
-
-For deeper technical details, see the Beta V1 verification report when available in the repository:
-
-[`artifacts/september27/README.md`](artifacts/september27/README.md)
-
-Release notes:
-
-[`RELEASE_NOTES_BETA_V1.md`](RELEASE_NOTES_BETA_V1.md)
+Only include relevant log excerpts, and remove personal paths, tokens and credentials before posting them.
 
 ---
 
 ## 💡 Suggestions & Feedback
 
-Feedback is especially useful during the Beta V1 development phase.
-
-If you find a bug, have an idea for a feature or want to suggest an improvement, feel free to open an **Issue** on GitHub.
-
----
-
-## 📦 Availability
-
-The old Alpha has been **retired** and is no longer presented as the current downloadable release.
-
-**Beta V1 is the active development version**, but it should still be treated as experimental software rather than a production-ready release. If you build or test the current codebase, expect unfinished optimization, renderer-specific issues and features whose reliability is still being evaluated.
+If you find a bug, have an idea for a feature or want to suggest an improvement, open an **Issue** on GitHub.
 
 ---
 
 ## 📄 License
 
-Cinecore Player is distributed under the **PolyForm Noncommercial 1.0.0 License**.
+Cinecore Player's original code is distributed under the **PolyForm Noncommercial 1.0.0 License**: it may be used, modified and studied under the conditions of the license, and commercial use is not permitted. See [`LICENSE`](LICENSE).
 
-The project is source-available and may be used, modified and studied under the conditions defined by the license.
-
-Commercial use is not permitted.
-
-For more information, see the [`LICENSE`](LICENSE) file included in the repository.
+Third-party software keeps its own licenses. FFmpeg, libmpv and MPC Video Renderer are GPL-licensed. See [`THIRD-PARTY-CREDITS.md`](THIRD-PARTY-CREDITS.md) and the notices under `third-parties`.
 
 ---
 
 ## ⭐ Support the Project
 
-If you like Cinecore Player, consider leaving a **⭐ Star** on the repository.
-
-It helps the project grow and makes it easier for other users to discover it.
+If you like Cinecore Player, consider leaving a **⭐ Star** on the repository. It helps other users discover the project.
 
 ---
 
