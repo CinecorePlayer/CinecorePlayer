@@ -13,10 +13,14 @@ Cinecore Player is a **free**, **source-available**, and **non-commercial** medi
 
 Cinecore combines a DirectShow-based playback path with **libmpv**, renderer support for **madVR**, **MPC Video Renderer (MPCVR)** and **EVR**, HDR handling and analysis, a TMDb-powered media library, a native **Jellyfin** client, its own **audio engine for music**, real-time audio analysis, subtitle download, browser remote control, home automation hooks and Cinema Mode.
 
-> ### 🚧 Development status
-> **Beta 3 (version 0.3.0) is the current version of Cinecore Player.** It builds on Beta 2 and adds automatic updates, subtitle search and download with automatic re-timing, HDR analysis (whole film and live), Trakt, home automations, crossfade and radio for music, a library report, and a long list of fixes.
->
-> Beta 3 is still an **experimental development build and is not production-ready**. It has not been validated across the full range of GPUs, renderers, displays, audio devices and network setups. Bugs, renderer-specific behavior and rough edges should be expected.
+### 🚧 Development status
+
+**Beta 3 (version 0.3.0) is the current version of Cinecore Player.** It builds on Beta 2 and adds automatic updates, subtitle search and download with automatic re-timing, HDR analysis (both whole-film and live), Trakt integration, home automations, crossfade and radio for music, a library report, and a long list of fixes.
+
+Beta 3 is still an **experimental development build and is not production-ready**. It has not been validated across the full range of GPUs, renderers, displays, audio devices, and network setups. Bugs, renderer-specific behavior, and rough edges should be expected.
+
+> [!WARNING]
+> **The project files currently available in the repository do not correspond to the latest published release.**
 
 ---
 
