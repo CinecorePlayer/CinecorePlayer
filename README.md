@@ -11,10 +11,10 @@
 
 Cinecore Player is a **free**, **source-available**, and **non-commercial** media player for Windows, built in **C# / .NET 9.0** and focused on high-quality local playback, home-cinema use and a modern media-center experience.
 
-Cinecore combines a DirectShow-based playback path with **libmpv**, renderer support for **madVR**, **MPC Video Renderer (MPCVR)** and **EVR**, HDR handling, a TMDb-powered media library, its own **audio engine for music**, real-time audio analysis, browser remote control and Cinema Mode.
+Cinecore combines a DirectShow-based playback path with **libmpv**, renderer support for **madVR**, **MPC Video Renderer (MPCVR)** and **EVR**, HDR handling, a TMDb-powered media library, **Jellyfin** integration through its API, its own **audio engine for music**, real-time audio analysis, browser remote control and Cinema Mode.
 
 > ### 🚧 Development status
-> **Beta 2 (version 1.1) is the current version of Cinecore Player.** It builds on Beta 1 and adds the Cinecore Audio Engine, native settings pages for the external renderers and filters, a reworked reviews page, a new installer and a refreshed interface.
+> **Beta 2 (version 1.1) is the current version of Cinecore Player.** It builds on Beta 1 and adds the Cinecore Audio Engine, Jellyfin integration, native settings pages for the external renderers and filters, a reworked reviews page, a new installer and a refreshed interface.
 >
 > Beta 2 is still an **experimental development build and is not production-ready**. It has not been validated across the full range of GPUs, renderers, displays, audio devices and network setups. Bugs, renderer-specific behavior and rough edges should be expected.
 
@@ -38,11 +38,7 @@ Administrator approval is required for the default Program Files location and fo
 
 ## 🆕 New in Beta 2
 
-<!--
-  Screenshots for this section go in Screenshots/beta2/ with the file names used below.
-  Add the image with that exact name and it appears here; delete the line for any
-  screenshot you decide not to include.
--->
+<!-- Screenshots for this section go in Screenshots/beta2/ with the file names used below. Add the image with that exact name and it appears here; delete the line for any screenshot you decide not to include. -->
 
 ### 🎚️ Cinecore Audio Engine
 
@@ -55,7 +51,6 @@ Music now plays through Cinecore's own engine: FFmpeg decoding, high-precision s
 - Clip protection: true-peak limiter plus automatic headroom
 
 ![Cinecore Audio Engine settings](Screenshots/beta2/audio-engine.png)
-
 ![Parametric equalizer](Screenshots/beta2/equalizer.png)
 
 ### 📟 VU Meters & Analysis
@@ -69,8 +64,11 @@ Analog-style VU meters with automatic calibration that follows the loudness of t
 madVR, LAV Video, LAV Audio, MPC Video Renderer and XySubFilter have settings pages inside Cinecore, in the same style as the player's own settings. madVR options such as chroma upscaling, NGU, image doubling, dithering, HDR handling and smooth motion can be changed without opening the madVR panel. The original panels remain available for everything else.
 
 ![madVR settings page](Screenshots/beta2/settings-madvr.png)
-
 ![MPC Video Renderer settings page](Screenshots/beta2/settings-mpcvr.png)
+
+### 🪼 Jellyfin Integration
+
+Jellyfin servers are now supported through the **Jellyfin API**, so a Jellyfin library can be used from Cinecore alongside local files, network paths and DLNA sources.
 
 ### ⭐ Ratings & Reviews
 
@@ -105,7 +103,6 @@ Automatic alignment compares several scenes of the two tracks, using audio corre
 - The interface starts in Italian when Windows is in Italian, otherwise in English
 
 ![Photo viewer](Screenshots/beta2/photo-viewer.png)
-
 ![Browser remote, Spotlight navigation](Screenshots/beta2/remote-spotlight.png)
 
 ---
@@ -182,6 +179,7 @@ Libraries for movies, TV series, videos, music and photos:
 
 - Library scanning and search by title, series or cast
 - **TMDb metadata**: artwork, details and cast
+- **Jellyfin** integration through the Jellyfin API
 - Ratings and reviews from IMDb, Letterboxd and Metacritic
 - Spotlight carousel for featured titles
 - Favorites and viewing diary/history
@@ -275,9 +273,9 @@ TV-series playback can skip intros and outros and move on to the next episode.
 
 Photo browsing with slideshow, zoom, pan and keyboard navigation.
 
-### 📡 DLNA & Network Media
+### 📡 DLNA, Jellyfin & Network Media
 
-DLNA/UPnP servers can be browsed and played alongside local files, network paths and URLs. Behavior varies with the network and the server.
+DLNA/UPnP servers can be browsed and played alongside local files, network paths and URLs. Jellyfin servers are added through the Jellyfin API. Behavior varies with the network and the server.
 
 ### ⚙️ Settings
 
@@ -348,7 +346,7 @@ Beta 2 is a development build, not finished software.
 - Synchronized lyrics can lose alignment on difficult tracks
 - Automatic audio alignment is experimental
 - Ratings, reviews, metadata and lyrics depend on external providers and on the network
-- DLNA behavior depends on the server and the network
+- DLNA and Jellyfin behavior depends on the server and the network
 - Some bundled third-party installers are unsigned
 - Long sessions and unusual media combinations need more stability testing
 
@@ -366,6 +364,7 @@ Beta 2 is a development build, not finished software.
 - Native settings pages for madVR, LAV Video, LAV Audio, MPC Video Renderer and XySubFilter
 - 3D playback through madVR and MPC Video Renderer
 - Subtitle position options
+- Jellyfin integration through the Jellyfin API
 - Ratings and reviews from IMDb, Letterboxd and Metacritic
 - Multi-scene automatic audio alignment with speed-mismatch detection
 - New playlist sheet, cast search, source filter and empty-library guidance
