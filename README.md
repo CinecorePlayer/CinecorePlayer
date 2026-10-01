@@ -152,7 +152,7 @@ Rules that send a command to a device when playback **starts, pauses, resumes, s
 ## 🆕 New in Beta 2
 
 <!--
-  Screenshots for this section go in Screenshots/beta2/ with the file names used below.
+  Screenshots for this section go in Screenshots/ with the file names used below.
   Add the image with that exact name and it appears here; delete the line for any
   screenshot you decide not to include.
 -->
@@ -167,35 +167,35 @@ Music now plays through Cinecore's own engine: FFmpeg decoding, high-precision s
 - Loudness compensation for low-volume listening
 - Clip protection: true-peak limiter plus automatic headroom
 
-![Cinecore Audio Engine settings](Screenshots/beta2/audio-engine.png)
+![Cinecore Audio Engine settings](Screenshots/audio-engine.png)
 
-![Parametric equalizer](Screenshots/beta2/equalizer.png)
+![Parametric equalizer](Screenshots/equalizer.png)
 
 ### 📟 VU Meters & Analysis
 
 Analog-style VU meters with automatic calibration that follows the loudness of the track, or fixed reference levels. Readouts cover true peak, clipping, loudness (LUFS), dynamics and limiter activity, and the analysis data can be exported. Each chart now explains what it shows.
 
-![VU meters](Screenshots/beta2/vu-meters.png)
+![VU meters](Screenshots/vu-meters.png)
 
 ### 🎛️ Native Renderer & Filter Settings
 
 madVR, LAV Video, LAV Audio, MPC Video Renderer and XySubFilter have settings pages inside Cinecore, in the same style as the player's own settings. madVR options such as chroma upscaling, NGU, image doubling, dithering, HDR handling and smooth motion can be changed without opening the madVR panel. The original panels remain available for everything else.
 
-![madVR settings page](Screenshots/beta2/settings-madvr.png)
+![madVR settings page](Screenshots/settings-madvr.png)
 
-![MPC Video Renderer settings page](Screenshots/beta2/settings-mpcvr.png)
+![MPC Video Renderer settings page](Screenshots/settings-mpcvr.png)
 
 ### ⭐ Ratings & Reviews
 
 Movie and series pages show ratings from **IMDb**, **Letterboxd** and **Metacritic**, with Letterboxd and Metacritic reviews and spoiler warnings.
 
-![Ratings and reviews](Screenshots/beta2/reviews.png)
+![Ratings and reviews](Screenshots/reviews.png)
 
 ### 🧪 Audio Synchronization
 
 Automatic alignment compares several scenes of the two tracks, using audio correlation and, optionally, a local transcription. It detects tracks that run at a different speed (24 vs 23.976 fps, PAL 25 fps) and reports when a fixed delay cannot align them. The manual delay has a live preview, and nothing is saved before Apply.
 
-![Audio synchronization](Screenshots/beta2/audio-sync.png)
+![Audio synchronization](Screenshots/audio-sync.png)
 
 ### 📚 Library & Playlists
 
@@ -205,7 +205,7 @@ Automatic alignment compares several scenes of the two tracks, using audio corre
 - Artist photos and album backgrounds in the music library
 - TMDb and Spotify credentials are set in Settings, with a built-in key or a personal one
 
-![New playlist sheet](Screenshots/beta2/playlist-sheet.png)
+![New playlist sheet](Screenshots/playlist-sheet.png)
 
 ### 🖼️ Photos, Lyrics & Interface
 
@@ -217,9 +217,7 @@ Automatic alignment compares several scenes of the two tracks, using audio corre
 - New typography, anti-aliased rounded corners on Windows 11, smoother transitions and no banding in gradients
 - The interface starts in Italian when Windows is in Italian, otherwise in English
 
-![Photo viewer](Screenshots/beta2/photo-viewer.png)
-
-![Browser remote, Spotlight navigation](Screenshots/beta2/remote-spotlight.png)
+![Photo viewer](Screenshots/photo-viewer.png)
 
 ---
 
