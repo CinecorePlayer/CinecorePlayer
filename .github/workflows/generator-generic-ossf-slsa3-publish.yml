@@ -1,0 +1,70 @@
+name: SLSA provenance
+
+on:
+  workflow_dispatch:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write   # per allegare l'installer alla release
+    outputs:
+      digests: ${{ steps.hash.outputs.digests }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Publish
+        shell: pwsh
+        run: |
+          dotnet publish CinecorePlayer/CinecorePlayer.csproj `
+            -c Release -r win-x64 --self-contained false `
+            -o publish
+
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\CinecorePlayer.iss
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item Output\CinecorePlayer-Setup.exe dist\
+
+      - name: Generate subjects for provenance
+        id: hash
+        shell: pwsh
+        run: |
+          $lines = Get-ChildItem dist -File | ForEach-Object {
+            $h = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$h  $($_.Name)"
+          }
+          $text = ($lines -join "`n") + "`n"
+          $b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($text))
+          "digests=$b64" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+
+      - name: Allega installer alla release
+        if: github.event_name == 'release'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist\* --clobber
+
+  provenance:
+    needs: [build]
+    permissions:
+      actions: read
+      id-token: write
+      contents: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    with:
+      base64-subjects: ${{ needs.build.outputs.digests }}
+      upload-assets: true
