@@ -20,7 +20,7 @@ Cinecore combines a DirectShow-based playback path with **libmpv**, renderer sup
 Beta 3 is still an **experimental development build and is not production-ready**. It has not been validated across the full range of GPUs, renderers, displays, audio devices, and network setups. Bugs, renderer-specific behavior, and rough edges should be expected.
 
 > [!WARNING]
-> **The project files currently available in the repository do not correspond to the latest published release.**
+> **The project files currently available in the repository do not correspond to the latest published release. I'll update it as soon as i release the next HotFix patch**
 
 ---
 
