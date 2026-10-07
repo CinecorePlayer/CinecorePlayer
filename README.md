@@ -23,6 +23,9 @@ It combines a DirectShow playback path with **libmpv**, **madVR**, **MPC Video R
 
 The app is clean and runs without problems in everyday use, and everything described here works. It is still a **beta**: it needs more testing on a wider range of GPUs, renderers, displays, audio devices and networks to find remaining bugs and imperfections, and parts of the interface may change in later versions.
 
+> [!NOTE]
+> Some screenshots on this page were taken on earlier versions, so they look slightly different from the latest one (fonts, corners, dialogs and other visual details).
+
 ---
 
 ## 📥 Download
@@ -64,12 +67,13 @@ Advanced video features depend on the renderer, the installed filters, the GPU d
 
 - **DirectShow** playback with **madVR**, **MPC Video Renderer (MPCVR)** or **EVR**, and **libmpv** playback
 - Local files, network paths, media URLs and YouTube (through the bundled yt-dlp and FFmpeg)
-- Audio-track and subtitle-track selection
+- Audio-track and subtitle-track selection, **bitstream** and PCM audio output
 - HDR, **3D** (madVR and MPCVR, with 3D-to-2D, swap eyes and output format) and upscaling where the renderer and hardware support them
 - Automatic refresh-rate switching
 - **Volume above 100%** with a limiter, and a per-film volume memory
 - Seek timeline with five larger previews, also for network sources
 - Picture-in-picture, Skip Intro / Outro and next episode for series, optional fullscreen start
+- Menu entries that cannot be used at the moment (for example HDR analysis on a network stream) are disabled instead of failing when clicked
 - **Info panel**: live bit rate and dropped frames, plus what the components report (decoder and GPU, audio decoder, audio device, renderer, refresh rate, colour matrix, jitter, mpv outputs and network buffer)
 
 ### 🎛️ Renderer & Filter Settings
@@ -103,6 +107,7 @@ Off by default. *Settings › General › Fullscreen image*, or the **Z** key du
 - Track selection with an explicit **Off**, forced tracks by language, custom position, height on screen and subtitles in the black bars
 - **Search and download**: YIFY Subtitles (films), Gestdown / Addic7ed (series), OpenSubtitles with your own key
 - **Automatic re-timing** on the film's audio, also stretching between 25 and 23.976 fps; an existing `.srt` can be re-timed too, keeping a copy of the original
+- External subtitles load with madVR / XySubFilter and with mpv; the choice is remembered per film
 - Saved as `Film.it.srt` next to the video, or in Cinecore's folder when the video folder is read-only
 - Only titles and public IDs leave your PC, never file names or paths
 
@@ -111,8 +116,8 @@ Off by default. *Settings › General › Fullscreen image*, or the **Z** key du
 A sheet for the video being played that shows what the file declares next to what it actually contains.
 
 - **Declared:** MaxCLL, MaxFALL, mastering display, Dolby Vision profile, HDR10+
-- **Measured through the whole film:** peak and average luminance on the PQ scale (a click on the chart jumps to that point), luminance distribution, gamut use (Rec.709 / P3 / BT.2020), percentiles, black level, dynamic range in stops and active picture area, with black bars excluded
-- **Real time view:** RGB waveform, level bars, CIE 1931 chromaticity diagram, false colour, last-minute history and vectorscope, measured frame by frame
+- **Measured through the whole film:** peak and average luminance on the PQ scale (a click on the chart jumps to that point), luminance distribution, gamut use (Rec.709 / P3 / BT.2020), the absolute maximum next to the 99.99th-percentile peak, median, 90th / 99th percentile, mean luminance, black level, dynamic range in stops and active picture area, with black bars excluded
+- **Real time view:** RGB waveform, level bars, CIE 1931 chromaticity diagram, false colour, last-minute history and vectorscope, measured frame by frame; on a PC that cannot decode in real time it steps down by itself to reference frames, then key frames
 - **Export** as HTML report, PNG, CSV or JSON
 - It uses its own decoder, so it does not depend on the renderer and does not disturb playback; results are cached per file
 
@@ -137,6 +142,7 @@ A sheet for the video being played that shows what the file declares next to wha
 - The device is remembered and checked at startup, and can be found by network search
 - **Safe start:** never above the last level used, at most +3 dB per command, and no increase when already above −20 dB
 - The slider follows your gesture, so it stays correct even if the receiver was moved with its own remote
+- A film's remembered volume only ever lowers a network receiver, never raises it
 
 ---
 
@@ -168,7 +174,7 @@ FFmpeg decoding, high-precision soxr resampling and a double-precision DSP chain
 - Analog-style VU meters with automatic calibration that follows the loudness of the track, or fixed reference levels
 - Waveform / oscilloscope, spectrum analyzer, true peak, clipping and limiter readouts
 - Loudness (LUFS), RMS level, dynamics, phase correlation and channel balance
-- Export of the analysis data
+- Export of the analysis data; each chart explains what it shows
 
 ![VU meters](Screenshots/vu-meters.png)
 
@@ -183,12 +189,15 @@ FFmpeg decoding, high-precision soxr resampling and a double-precision DSP chain
 
 ### 🗂️ Media Library
 
-- Movies, TV series, videos, music and photos, with library scanning and search by title, series or cast
-- **TMDb** artwork, details and cast; accented titles, English plot when the Italian one is missing
+- Movies, TV series, videos, music and photos, with library scanning and search by title, series or cast, plus an "All sources" filter
+- **TMDb** artwork, details and cast; accented titles, English plot when the Italian one is missing, and the server's own data first when Jellyfin is connected
+- Home follows the source in use (Computer or Network), and the sidebar marks which one is active
 - Favorites, viewing diary, resume and "Continue watching"; titles can be removed from either with a right-click
-- **Fix title and cover:** correct the title and year, pick the right film among the TMDb results and one of its covers, or use your own image
+- **Fix title and cover:** correct the title and year, pick the right film among the TMDb results and one of its covers, or use your own image; "Restore" removes the correction
 - **Library report:** number of titles, space and formats, plus duplicates, low resolution or bit rate, inconsistent HDR metadata and unreadable files
 - Filters and sorting move to the next option with one click
+- Detail sheets open fast and fade in and out; "Play" starts from the beginning, resuming is done from "Continue watching"
+- Empty libraries explain what to add; disconnected drives are shown as such
 
 ### 🌟 Spotlight
 
@@ -203,7 +212,7 @@ Movie and series pages show ratings from **IMDb**, **Letterboxd** and **Metacrit
 ### 📋 Playlists & Queue
 
 - Playlists with name, description and cover, mixing films, series, music and photos
-- Editable playback queue, also from the playback overlay
+- Editable playback queue, also from the playback overlay; the album sheet can add the whole album to the queue
 
 ![New playlist sheet](Screenshots/playlist-sheet.png)
 
@@ -231,15 +240,16 @@ Movie and series pages show ratings from **IMDb**, **Letterboxd** and **Metacrit
 Cinecore talks to a Jellyfin server directly, without the DLNA plugin.
 
 - Automatic discovery; sign-in with password or **Quick Connect** (a code entered on a device already signed in)
-- Movies, episodes, videos and music arrive with the server's own titles, artwork and technical details
-- The original file is played directly with your renderer and audio path; **selectable quality** converts on the server when you want a lower bit rate, from the right-click menu, the settings or the remote
-- Progress, resume points and "played" stay in sync with your other devices
-- Tokens are stored encrypted; removing the server signs out and revokes them
+- Movies, episodes, videos and music arrive with the server's own titles, artwork and technical details; Home is built from the server's titles while it is connected
+- The original file is played directly with your renderer and audio path; **selectable quality** converts on the server when you want a lower bit rate, from the right-click menu, the settings or the remote. Changing quality during a film reopens it at the same point
+- Progress, resume points and "played" stay in sync with your other devices, and half-watched titles appear in "Continue watching"
+- Films watched from Jellyfin reach your Trakt history through the TMDb id declared by the server
+- The token is stored encrypted and never written to the log, the history or the resume file; removing the server signs out and revokes it
 
 ### 🌐 DLNA / UPnP & Network Page
 
 - DLNA / UPnP servers (Plex and others) can be browsed and played alongside local files, network paths and URLs
-- The Network page lists only servers with a catalogue to browse, Jellyfin and Plex first, with favourites and automatic address follow-up
+- The Network page lists only servers with a catalogue to browse, Jellyfin and Plex first, with favourites and automatic address follow-up (a server that changes IP keeps one entry; entries silent for a week are removed)
 - HDR analysis, subtitle download, audio alignment and per-film volume need files on the PC, not network streams
 
 ---
@@ -248,8 +258,8 @@ Cinecore talks to a Jellyfin server directly, without the DLNA plugin.
 
 ### 📱 Browser Remote
 
-- A browser remote for phones and tablets on the local network: playback, queue, library (Computer / Network), audio and subtitle tracks, Spotlight with D-pad, renderer, audio and Player settings
-- **QR pairing:** the interface dims and only the code remains. Saved to the phone's Home screen, the remote gets its own icon
+- A browser remote for phones and tablets on the local network: playback, queue, library (Computer / Network), audio and subtitle tracks, Spotlight with D-pad, renderer and audio settings, and a **Player** page with Jellyfin quality and the fullscreen-image options
+- **QR pairing:** the interface dims and only the code remains; on first launch the player offers to pair your phone. Saved to the phone's Home screen, the remote gets its own icon
 
 ### 🍿 Cinema Mode
 
@@ -266,24 +276,32 @@ Rules that send a command when playback **starts, pauses, resumes, stops** or re
 
 ### 🔄 Updates
 
-- **Cinecore:** checked once a day, only when nothing is playing; size and SHA-256 are verified against the values published by GitHub
-- **External components:** yt-dlp updates itself; LAV Filters and MakeMKV on request, with SHA-256 verification. Installers never start by themselves. madVR, MPC VR, XySubFilter, libmpv and FFmpeg update with the player
+- **Cinecore:** checked once a day shortly after startup, only when nothing is playing; the update sheet shows the release notes, and size and SHA-256 are verified against the values published by GitHub. A version can be skipped and the check switched off; development builds and portable copies never replace themselves
+- **External components** (*Extra › External components…*): yt-dlp updates itself; LAV Filters and MakeMKV on request, with SHA-256 verification. Installers never start by themselves. madVR, MPC VR, XySubFilter, libmpv and FFmpeg update with the player
 
 ### 🔒 Security
 
 - Keys, tokens and passwords are stored encrypted (Windows DPAPI); nothing is kept in clear text in the configuration or logs
-- Remote pairing throttles wrong PINs and accepts commands only from the remote page
+- Remote pairing does not reveal the PIN, throttles wrong PINs, accepts commands only from the remote page and refuses oversized requests
 - URLs and searches passed to yt-dlp cannot inject options or commands
+
+### 🎨 Interface & Settings
+
+- Modern typography, anti-aliased rounded corners on Windows 11, smooth animations and no banding in gradients
+- Animated detail and album sheets, cross-fade between pages, and one glass material shared by the music bar, the queue and the menus
+- Light and dark mode, accent colour
+- Player, renderer, audio and startup options (including fullscreen start)
+- TMDb, Spotify and TIDAL credentials, stored encrypted, with a built-in key or a personal one
 
 ### 🌍 Languages
 
-The interface is available in 🇬🇧 **English** and 🇮🇹 **Italian**. On first start it follows Windows, and it can be changed in the settings, together with light / dark mode, accent colour and the TMDb, Spotify and TIDAL credentials.
+The interface is available in 🇬🇧 **English** and 🇮🇹 **Italian**. On first start it follows Windows, and it can be changed in the settings.
 
 ---
 
 ## 📸 Screenshots
 
-The screenshots below were taken on Beta 1. The layout is the same today; fonts, corners and some details have changed.
+The screenshots below were taken on Beta 1 and have not all been updated to the latest version: the layout is the same, but fonts, corners, dialogs and some details look slightly different today.
 
 ### 🏠 Home, Library & Discovery
 
