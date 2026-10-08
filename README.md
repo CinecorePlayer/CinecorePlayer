@@ -45,7 +45,7 @@ Administrator approval is required for the default Program Files location and fo
 From Beta 3 on, an installed copy **updates itself**. Beta 1 and Beta 2 do not: install a newer version once by hand.
 
 > [!NOTE]
-> The releases `beta-v0.3.3` and `beta-v0.3.4` were built with the project still numbered 0.3.2, so copies installed from them keep offering 0.3.4. Installing 0.3.5 fixes the numbering.
+> The releases `beta-v0.3.3` and `beta-v0.3.4` were built with the project still numbered 0.3.2, so copies installed from them keep offering 0.3.4. Installing 0.3.5 fixes the numbering. The releases between `beta-v0.3.0` and `beta-v0.3.5` have been deleted.
 
 ---
 
