@@ -1,0 +1,14 @@
+C:\Users\nicol\Downloads\IntroOutroDetector\IntroOutroDetector\bin\Debug\net8.0\IntroOutroDetector.exe
+C:\Users\nicol\Downloads\IntroOutroDetector\IntroOutroDetector\bin\Debug\net8.0\IntroOutroDetector.deps.json
+C:\Users\nicol\Downloads\IntroOutroDetector\IntroOutroDetector\bin\Debug\net8.0\IntroOutroDetector.runtimeconfig.json
+C:\Users\nicol\Downloads\IntroOutroDetector\IntroOutroDetector\bin\Debug\net8.0\IntroOutroDetector.dll
+C:\Users\nicol\Downloads\IntroOutroDetector\IntroOutroDetector\bin\Debug\net8.0\IntroOutroDetector.pdb
+C:\Users\nicol\Downloads\IntroOutroDetector\IntroOutroDetector\obj\Debug\net8.0\IntroOutroDetector.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\nicol\Downloads\IntroOutroDetector\IntroOutroDetector\obj\Debug\net8.0\IntroOutroDetector.AssemblyInfoInputs.cache
+C:\Users\nicol\Downloads\IntroOutroDetector\IntroOutroDetector\obj\Debug\net8.0\IntroOutroDetector.AssemblyInfo.cs
+C:\Users\nicol\Downloads\IntroOutroDetector\IntroOutroDetector\obj\Debug\net8.0\IntroOutroDetector.csproj.CoreCompileInputs.cache
+C:\Users\nicol\Downloads\IntroOutroDetector\IntroOutroDetector\obj\Debug\net8.0\IntroOutroDetector.dll
+C:\Users\nicol\Downloads\IntroOutroDetector\IntroOutroDetector\obj\Debug\net8.0\refint\IntroOutroDetector.dll
+C:\Users\nicol\Downloads\IntroOutroDetector\IntroOutroDetector\obj\Debug\net8.0\IntroOutroDetector.pdb
+C:\Users\nicol\Downloads\IntroOutroDetector\IntroOutroDetector\obj\Debug\net8.0\IntroOutroDetector.genruntimeconfig.cache
+C:\Users\nicol\Downloads\IntroOutroDetector\IntroOutroDetector\obj\Debug\net8.0\ref\IntroOutroDetector.dll
