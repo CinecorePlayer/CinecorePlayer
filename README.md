@@ -22,6 +22,7 @@ It combines a DirectShow playback path with **libmpv**, **madVR**, **MPC Video R
 **Beta 3.6 (version 0.3.6)**, a patch on top of Beta 3.
 
 The app is clean and runs without problems in everyday use, and everything described here works. It is still a **beta**: it needs more testing on a wider range of GPUs, renderers, displays, audio devices and networks to find remaining bugs and imperfections, and parts of the interface may change in later versions.
+At the moment has been tested on: NVIDIA RTX3080 - INTEL IRIS IGPU - AMD R5 220.
 
 ---
 
