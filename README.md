@@ -23,9 +23,6 @@ It combines a DirectShow playback path with **libmpv**, **madVR**, **MPC Video R
 
 The app is clean and runs without problems in everyday use, and everything described here works. It is still a **beta**: it needs more testing on a wider range of GPUs, renderers, displays, audio devices and networks to find remaining bugs and imperfections, and parts of the interface may change in later versions.
 
-> [!NOTE]
-> Some screenshots on this page were taken on earlier versions, so they look slightly different from the latest one (fonts, corners, dialogs and other visual details).
-
 ---
 
 ## 📥 Download
