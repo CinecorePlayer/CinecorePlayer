@@ -221,11 +221,14 @@ FFmpeg decoding, high-precision soxr resampling and a double-precision DSP chain
 
 A separate discovery surface with large backdrops, year and runtime, video / HDR and audio-format badges, synopsis and cast, direct **Play** and **Details** actions and a carousel. A **Library / Network** toggle switches its source. Titles you started and still have to finish come first, the most recent one leading; an empty Spotlight explains what to add and opens the library. The Library / Network switch can be reached with the remote's arrows.
 
-### ⭐ Ratings & Reviews
+### ⭐ Ratings, Reviews & Cast
 
 Movie and series pages show ratings from **IMDb**, **Letterboxd** and **Metacritic**, with reviews and spoiler warnings.
 
 ![Ratings and reviews](Screenshots/reviews.png)
+![Cast](Screenshots/cast.png)
+
+> **⚠️ Design Notice:** The Cast section displayed during video playback is still a work in progress. Its visual design is not yet finalized and will be refined in future updates.
 
 ### 📋 Playlists & Queue
 
