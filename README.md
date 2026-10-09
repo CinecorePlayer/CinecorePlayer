@@ -5,21 +5,21 @@
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0)
 [![.NET 9.0](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20x64-0078D6?logo=windows&logoColor=white)](#%EF%B8%8F-system-requirements)
-[![Version](https://img.shields.io/badge/version-Beta%203.5%20(0.3.5)-yellow)](https://github.com/CinecorePlayer/CinecorePlayer/releases)
+[![Version](https://img.shields.io/badge/version-Beta%203.6%20(0.3.6)-yellow)](https://github.com/CinecorePlayer/CinecorePlayer/releases)
 [![Status](https://img.shields.io/badge/status-beta-orange)](#-status)
 [![Downloads](https://img.shields.io/github/downloads-pre/CinecorePlayer/CinecorePlayer/total.svg)](https://github.com/CinecorePlayer/CinecorePlayer/releases)
 [![Stars](https://img.shields.io/github/stars/CinecorePlayer/CinecorePlayer?style=flat&logo=github)](https://github.com/CinecorePlayer/CinecorePlayer)
-[![Languages](https://img.shields.io/badge/languages-English%20%7C%20Italian-4C9EEB)](#-languages)
+[![Languages](https://img.shields.io/badge/languages-English%20%7C%20Italian%20%7C%20Spanish-4C9EEB)](#-languages)
 
 Cinecore Player is a **free**, **source-available** and **non-commercial** media player for Windows, built in **C# / .NET 9.0** and focused on high-quality local playback, home-cinema use and a modern media-center experience.
 
-It combines a DirectShow playback path with **libmpv**, **madVR**, **MPC Video Renderer (MPCVR)** and **EVR**, with Blu-ray / DVD / ISO playback, HDR analysis, a TMDb-powered library, a native **Jellyfin** client, its own **audio engine for music**, subtitle download and re-timing, a phone remote, home automations and Cinema Mode.
+It combines a DirectShow playback path with **libmpv**, **madVR**, **MPC Video Renderer (MPCVR)** and **EVR**, with Blu-ray / ISO playback, **DVDs with their menus**, **audio CDs**, HDR analysis, a TMDb-powered library, native **Jellyfin** and **Emby** clients, its own **audio engine for music** with gapless playback, subtitle download and re-timing, a phone remote, home automations and Cinema Mode.
 
 ---
 
 ## 🚧 Status
 
-**Beta 3.5 (version 0.3.5)**, a patch on top of Beta 3.
+**Beta 3.6 (version 0.3.6)**, a patch on top of Beta 3.
 
 The app is clean and runs without problems in everyday use, and everything described here works. It is still a **beta**: it needs more testing on a wider range of GPUs, renderers, displays, audio devices and networks to find remaining bugs and imperfections, and parts of the interface may change in later versions.
 
@@ -30,7 +30,7 @@ The app is clean and runs without problems in everyday use, and everything descr
 
 ## 📥 Download
 
-Download **`CinecorePlayer-Beta3.5-Setup.exe`** from the [Releases page](https://github.com/CinecorePlayer/CinecorePlayer/releases) and run it.
+Download **`CinecorePlayer-Beta3.6-Setup.exe`** from the [Releases page](https://github.com/CinecorePlayer/CinecorePlayer/releases) and run it.
 
 The installer:
 
@@ -56,6 +56,8 @@ From Beta 3 on, an installed copy **updates itself**. Beta 1 and Beta 2 do not: 
 - **WebView2 Runtime:** needed for WebView-backed pages; the installer offers it when missing.
 - **Video renderers:** libmpv is bundled. madVR, MPC Video Renderer and LAV Filters are optional components offered by the installer. EVR is part of Windows.
 - **Protected Blu-rays:** MakeMKV (optional, not bundled) or your own `KEYDB.cfg`.
+- **DVDs with menus:** the DVD engine that is part of Windows, plus LAV Filters; the drive's region must match the disc.
+- **Online metadata:** your own free TMDb key (see [Keys and accounts](#-keys-and-accounts)).
 
 Advanced video features depend on the renderer, the installed filters, the GPU drivers and the display.
 
@@ -72,9 +74,14 @@ Advanced video features depend on the renderer, the installed filters, the GPU d
 - Automatic refresh-rate switching
 - **Volume above 100%** with a limiter, and a per-film volume memory
 - Seek timeline with five larger previews, also for network sources
-- Picture-in-picture, Skip Intro / Outro and next episode for series, optional fullscreen start
+- **Fast scan:** hold a skip button to scan at x0.5, x1, x2 or x4 in either direction (each click goes faster or turns round, Play ends it); **frame step** with `,` and `.`
+- Picture-in-picture, Skip Intro / Outro and next episode for series (detected faster, with a fingerprint cache), optional fullscreen start
+- **Crop to an aspect ratio:** *Video › Crop* keeps the centre of the picture in the chosen format (4:3, 16:9, 1.85, 2.00, 2.20, 2.35, 2.39, 2.76), with madVR, MPC Video Renderer, EVR and mpv; the fullscreen-image modes follow the cropped format. It applies to the film being played
+- **Loading screens:** the film's backdrop and title with a progress bar that reaches the end before playback starts; an audio CD shows the album cover and then a wide photo of the artist
+- **Right-click menu** in groups: Open, Spotlight, playback, Audio, Subtitles, Video, streaming quality, Devices, Before the film, Tools
 - Menu entries that cannot be used at the moment (for example HDR analysis on a network stream) are disabled instead of failing when clicked
-- **Info panel**: live bit rate and dropped frames, plus what the components report (decoder and GPU, audio decoder, audio device, renderer, refresh rate, colour matrix, jitter, mpv outputs and network buffer)
+- **Cast during the film:** a button in the playback overlay opens the cast with photographs and roles
+- **Info panel**: the film first (poster, year, runtime, rating, plot and cast), then live bit rate and dropped frames, plus what the components report (decoder and GPU, audio decoder, audio device, renderer, refresh rate, colour matrix, jitter, mpv outputs and network buffer)
 
 ### 🎛️ Renderer & Filter Settings
 
@@ -86,11 +93,22 @@ madVR, LAV Video, LAV Audio, MPC Video Renderer and XySubFilter have settings pa
 
 ### 💿 Blu-ray, DVD & ISO
 
-- Open `BDMV` / `VIDEO_TS` folders, discs and ISO files from *Open disc*, *Open file*, the library and "Open with"
-- **Blu-ray** works with madVR, MPC VR, EVR and mpv; **DVD** with mpv. The main title plays, there is no disc menu
+- Open `BDMV` / `VIDEO_TS` folders, discs and ISO files from *Open › Open disc*, *Open file*, the library and "Open with"
+- **Blu-ray** works with madVR, MPC VR, EVR and mpv. The main title plays, there is no Blu-ray menu
+- **DVD like on a set-top player:** opening notices, the disc's own menus and extras, with madVR, MPC Video Renderer and EVR, in the correct anamorphic shape (16:9 or 4:3) windowed and fullscreen. Menus are driven with the arrow keys, Enter and Back, the mouse, or the D-pad of the phone remote; **M** or *Disc menu* returns to the menu. Chapters, audio tracks and subtitles are also in the player's menu, and menus and audio start in the interface language when the disc has it
+- **Direct DVD playback:** *Settings › General › DVD playback* can go straight to the film through mpv instead, with chapters, tracks and disc titles in the player's menu. It is also the automatic fallback when a disc does not start
+- **Resume:** a disc that was stopped half-way opens on a fullscreen screen with the film's artwork and two choices, Resume or Start over
 - **ISO** files are mounted read-only by Windows (no administrator rights), with mpv as fallback
 - **Protected discs** (AACS / BD+), with no keys included: either **MakeMKV** installed (preferred, required for UHD), or bundled **libaacs + your own `KEYDB.cfg`**, imported from *Settings › Playback › Protected Blu-rays*
 - A disc that cannot be decrypted shows a clear message instead of a black screen; malformed discs are rejected safely
+
+### 📀 Audio CD
+
+- The CD in the drive opens as an album, from *Open › Open disc*, the drive itself or one of its tracks, with all tracks in the queue
+- While a disc is in the drive it appears in the library (DVDs and Blu-rays among the films, audio CDs among the albums) and as an entry under *Devices* in the sidebar; it disappears when the disc is removed
+- The disc is recognised from its table of contents through **MusicBrainz**: titles, artist, year and cover. Offline, or for a disc that is not in the archive, tracks are listed as Track 1, 2…; a disc seen once opens without network afterwards
+- The audio is read losslessly from the disc and played by the **Cinecore Audio Engine**: gapless between tracks, exclusive or bit-perfect output, equalizer, meters and analysis, lyrics and scrobbling work as for files
+- Read-ahead keeps half a minute in memory, so a slow drive does not interrupt the music
 
 ### 🖼️ Fullscreen Image: Constant Height / Area
 
@@ -105,7 +123,7 @@ Off by default. *Settings › General › Fullscreen image*, or the **Z** key du
 ### 💬 Subtitles
 
 - Track selection with an explicit **Off**, forced tracks by language, custom position, height on screen and subtitles in the black bars
-- **Search and download**: YIFY Subtitles (films), Gestdown / Addic7ed (series), OpenSubtitles with your own key
+- **Search and download**: YIFY Subtitles (films), Gestdown / Addic7ed (series), **Subdl** and OpenSubtitles with your own keys
 - **Automatic re-timing** on the film's audio, also stretching between 25 and 23.976 fps; an existing `.srt` can be re-timed too, keeping a copy of the original
 - External subtitles load with madVR / XySubFilter and with mpv; the choice is remembered per film
 - Saved as `Film.it.srt` next to the video, or in Cinecore's folder when the video folder is read-only
@@ -155,7 +173,8 @@ FFmpeg decoding, high-precision soxr resampling and a double-precision DSP chain
 - Equalizer: 10-band graphic, 31-band third-octave graphic, or parametric (frequency, gain, Q and shape, including shelves), edited on the graph
 - ReplayGain per track or album, headphone crossfeed, stereo width, balance, mono sum, loudness compensation
 - Clip protection: true-peak limiter plus automatic headroom
-- **Crossfade** between tracks (3, 6 or 10 seconds)
+- **Gapless playback:** consecutive tracks of an album join sample by sample, in shared, exclusive and bit-perfect output
+- **Crossfade** between tracks (3, 6 or 10 seconds), left off between consecutive tracks of the same album
 - With "PC default" output, playback follows the Windows default device
 
 ![Cinecore Audio Engine settings](Screenshots/audio-engine.png)
@@ -167,7 +186,8 @@ FFmpeg decoding, high-precision soxr resampling and a double-precision DSP chain
 - Global music player, library navigation and queue management
 - **Radio:** when the queue ends, playback continues with similar tracks from your library (same artist, collaborators, nearby years, favourites), with no online service
 - Album and track metadata, artist photos, covers and album backgrounds from **TIDAL** and **Spotify** (selectable source, keys stored encrypted)
-- Translucent music bar with animated entrance and exit
+- **Scrobbling** to **Last.fm** and **ListenBrainz** (*Extra › Listens*), with "now playing" and a queue for listens made offline
+- Music bar as a floating glass island: centred, rounded, with the page showing around it and its colours passing behind the glass
 
 ### 📟 VU Meters & Real-Time Analysis
 
@@ -193,6 +213,7 @@ FFmpeg decoding, high-precision soxr resampling and a double-precision DSP chain
 - **TMDb** artwork, details and cast; accented titles, English plot when the Italian one is missing, and the server's own data first when Jellyfin is connected
 - Home follows the source in use (Computer or Network), and the sidebar marks which one is active
 - Favorites, viewing diary, resume and "Continue watching"; titles can be removed from either with a right-click
+- Series sheets list the episodes of the season in a column that fills the sheet
 - **Fix title and cover:** correct the title and year, pick the right film among the TMDb results and one of its covers, or use your own image; "Restore" removes the correction
 - **Library report:** number of titles, space and formats, plus duplicates, low resolution or bit rate, inconsistent HDR metadata and unreadable files
 - Filters and sorting move to the next option with one click
@@ -201,7 +222,7 @@ FFmpeg decoding, high-precision soxr resampling and a double-precision DSP chain
 
 ### 🌟 Spotlight
 
-A separate discovery surface with large backdrops, year and runtime, video / HDR and audio-format badges, synopsis and cast, direct **Play** and **Details** actions and a carousel. A **Library / Network** toggle switches its source.
+A separate discovery surface with large backdrops, year and runtime, video / HDR and audio-format badges, synopsis and cast, direct **Play** and **Details** actions and a carousel. A **Library / Network** toggle switches its source. Titles you started and still have to finish come first, the most recent one leading; an empty Spotlight explains what to add and opens the library. The Library / Network switch can be reached with the remote's arrows.
 
 ### ⭐ Ratings & Reviews
 
@@ -235,15 +256,15 @@ Movie and series pages show ratings from **IMDb**, **Letterboxd** and **Metacrit
 
 ## 📡 Network
 
-### 📡 Jellyfin
+### 📡 Jellyfin & Emby
 
-Cinecore talks to a Jellyfin server directly, without the DLNA plugin.
+Cinecore talks to **Jellyfin** and **Emby** servers directly, without the DLNA plugin.
 
-- Automatic discovery; sign-in with password or **Quick Connect** (a code entered on a device already signed in)
+- Automatic discovery of both; sign-in with password, or **Quick Connect** on Jellyfin (a code entered on a device already signed in)
 - Movies, episodes, videos and music arrive with the server's own titles, artwork and technical details; Home is built from the server's titles while it is connected
-- The original file is played directly with your renderer and audio path; **selectable quality** converts on the server when you want a lower bit rate, from the right-click menu, the settings or the remote. Changing quality during a film reopens it at the same point
+- The original file is played directly with your renderer and audio path; **selectable quality** converts on the server when you want a lower bit rate, from the right-click menu (*Streaming quality*), the settings or the remote. Changing quality during a film reopens it at the same point
 - Progress, resume points and "played" stay in sync with your other devices, and half-watched titles appear in "Continue watching"
-- Films watched from Jellyfin reach your Trakt history through the TMDb id declared by the server
+- Films watched from the server reach your Trakt history through the TMDb id it declares
 - The token is stored encrypted and never written to the log, the history or the resume file; removing the server signs out and revokes it
 
 ### 🌐 DLNA / UPnP & Network Page
@@ -258,12 +279,15 @@ Cinecore talks to a Jellyfin server directly, without the DLNA plugin.
 
 ### 📱 Browser Remote
 
-- A browser remote for phones and tablets on the local network: playback, queue, library (Computer / Network), audio and subtitle tracks, Spotlight with D-pad, renderer and audio settings, and a **Player** page with Jellyfin quality and the fullscreen-image options
+- A browser remote for phones and tablets on the local network: playback, queue, library (Computer / Network), audio and subtitle tracks, Spotlight and DVD menus with the D-pad, fast scan, and settings grouped as Playback, Screen, Player, Advanced components and Remote (streaming quality, fullscreen start and the fullscreen-image options included)
+- **Personalisation:** order of the blocks, start page, accent colour and vibration, saved on the phone
+- **Type the time:** a tap on the current time opens a field for minutes, hours and minutes or the full time, more precise than dragging the line. Buttons show the touch, and a long press on a phone no longer brings up text selection
+- **On-screen feedback:** commands from the remote show a compact pill at the top of the screen (volume with its bar and value, or the receiver's level in dB), and dragging the timeline on the phone shows and moves the player's own timeline with its previews
 - **QR pairing:** the interface dims and only the code remains; on first launch the player offers to pair your phone. Saved to the phone's Home screen, the remote gets its own icon
 
 ### 🍿 Cinema Mode
 
-- Pre-film screen with the film's artwork, optional demo clip and automatic transition to the film
+- Pre-film screen with the film's artwork, optional demo clip and automatic transition to the film; discs get it too, with title and artwork found from the disc label
 - **WLED** room lights, with their own settings sheet and a live connection check
 
 ### 🏠 Home Automations
@@ -279,6 +303,15 @@ Rules that send a command when playback **starts, pauses, resumes, stops** or re
 - **Cinecore:** checked once a day shortly after startup, only when nothing is playing; the update sheet shows the release notes, and size and SHA-256 are verified against the values published by GitHub. A version can be skipped and the check switched off; development builds and portable copies never replace themselves
 - **External components** (*Extra › External components…*): yt-dlp updates itself; LAV Filters and MakeMKV on request, with SHA-256 verification. Installers never start by themselves. madVR, MPC VR, XySubFilter, libmpv and FFmpeg update with the player
 
+### 🔑 Keys and Accounts
+
+No key tied to a personal account ships with the player, not even encrypted. Only the registrations of the application itself are built in (Trakt and Last.fm); everything else is yours, typed once in the settings and stored encrypted:
+
+- **TMDb** (free): artwork, plots, cast and the pre-film screen. Without it the library works with file names and local covers only
+- **Subdl** and **OpenSubtitles**: optional subtitle sources
+- **Spotify** and **TIDAL**: optional sources for artist photos and album covers
+- **Trakt**, **Last.fm**, **ListenBrainz**, **Jellyfin** and **Emby**: you sign in with your own account
+
 ### 🔒 Security
 
 - Keys, tokens and passwords are stored encrypted (Windows DPAPI); nothing is kept in clear text in the configuration or logs
@@ -289,13 +322,14 @@ Rules that send a command when playback **starts, pauses, resumes, stops** or re
 
 - Modern typography, anti-aliased rounded corners on Windows 11, smooth animations and no banding in gradients
 - Animated detail and album sheets, cross-fade between pages, and one glass material shared by the music bar, the queue and the menus
-- Light and dark mode, accent colour
+- Light and dark mode with a cross-fade between the two, accent colour
+- Plots and cast lines use a typeface chosen for small sizes
 - Player, renderer, audio and startup options (including fullscreen start)
-- TMDb, Spotify and TIDAL credentials, stored encrypted, with a built-in key or a personal one
+- TMDb, Subdl, Spotify and TIDAL credentials, entered by you and stored encrypted
 
 ### 🌍 Languages
 
-The interface is available in 🇬🇧 **English** and 🇮🇹 **Italian**. On first start it follows Windows, and it can be changed in the settings.
+The interface is available in 🇬🇧 **English**, 🇮🇹 **Italian** and 🇪🇸 **Spanish**. On first start it follows Windows (English or Italian), and it can be changed in the settings. Spanish is new in Beta 3.6: about 1,300 texts are translated; the phone remote page, a few messages composed at run time and the plots coming from TMDb stay in English.
 
 ---
 
@@ -361,12 +395,13 @@ The screenshots below were taken on Beta 1 and have not all been updated to the 
 
 Cinecore is a beta: it needs more testing across hardware and setups, and parts of the interface may change.
 
-- **Discs:** decryption of protected Blu-rays and DVD playback have never been tested on a real disc (unprotected Blu-ray folders and ISO files are tested). No disc menu, no timeline previews for discs; UHD needs MakeMKV
+- **Discs:** DVD playback, menus included, is tested on real discs; decryption of protected Blu-rays has never been tested on a real disc (unprotected Blu-ray folders and ISO files are tested). DVD menus use the Windows DVD engine and need the drive's region to match the disc; no Blu-ray menu; over a disc the timeline shows the time only, without a preview frame; UHD needs MakeMKV
+- **Audio CD:** tested on one drive and a few discs; a disc that MusicBrainz does not know has no titles; there is no ripping to files; aligning lyrics that come without timings needs a copy of the track read from the disc, which takes under a minute
 - **Video:** behaviour can differ between madVR, MPCVR, EVR and mpv; HDR handling and refresh-rate switching need more testing
 - **Fullscreen image:** with madVR / MPC VR / EVR the picture is not enlarged beyond the screen (mpv does); black-bar detection works on local files only; the EVR scale has not been measured on screen
 - **HDR analysis:** an estimate from sampled key frames, so a peak lasting a few frames can be missed. The real-time view measures every frame only if the PC can decode the film a second time alongside playback. Dolby Vision profile 5 cannot be measured
 - **Audio:** the Cinecore Audio Engine is relatively new and exclusive output depends on the device and driver; crossfade needs shared output; lyrics can lose alignment on difficult tracks; automatic audio alignment is experimental; receiver control is verified on a Marantz, other devices depend on the protocol
-- **Network:** Jellyfin tested with 10.11, network music plays through mpv, photos and live TV are not listed; DLNA depends on the server and the network
+- **Network:** Jellyfin tested with 10.11 and Emby with 4.10, network music plays through mpv, photos and live TV are not listed; DLNA depends on the server and the network
 - **Services:** subtitle sources are third-party sites and can change or stop working; ratings, metadata and lyrics depend on external providers
 - **Other:** the Windows share panel for photos only appears while the player is in the foreground; automatic updates work only for installed copies; some bundled third-party installers are unsigned; long sessions and unusual media combinations need more testing
 
@@ -375,6 +410,20 @@ Cinecore is a beta: it needs more testing across hardware and setups, and parts 
 ## 🕑 Version History
 
 Release notes for each version are on the [Releases page](https://github.com/CinecorePlayer/CinecorePlayer/releases).
+
+### Beta 3.6 (0.3.6), patch
+
+- Spanish interface, cast button in the overlay, redesigned Info panel, inserted discs in the library
+- Fixed a freeze when an audio device was connected while an audio CD was playing; music now reopens by itself when its output disappears
+- Smoother switch in and out of full screen; the loading artwork no longer shows through under the film; the audio analysis selector has a line under each view, coloured on the selected one
+- Library, graphs, lyrics, the analysis views and picture-in-picture now change with a dissolve; leaving Spotlight while music plays no longer shows a black screen
+- The loading bar reaches the end before the film starts and moves smoothly; the last letter of the start-up logo no longer appears in one jump
+- Crop to an aspect ratio on every renderer, loading screens with artwork and progress, music bar as a glass island
+- Remote: typed time, clearer touch feedback, new on-screen pill for volume and messages
+- DVDs with their menus on every renderer, direct DVD mode, resume screen for discs, audio CD playback with MusicBrainz
+- Native Emby client, gapless playback, Last.fm and ListenBrainz scrobbling, Subdl subtitles
+- Fast scan from the skip buttons, frame step, faster intro / outro detection, streaming quality in the right-click menu
+- Reorganised right-click menu, regrouped and personalisable phone remote, no personal keys built into the player
 
 ### Beta 3.5 (0.3.5), patch
 
