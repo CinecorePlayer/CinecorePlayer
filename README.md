@@ -1,6 +1,6 @@
 # 🎬 Cinecore Player 2026
 
-![Cinecore Player Spotlight](Screenshots/Screenshot%202026-09-28%20124315.png)
+![Cinecore Player Spotlight](Screenshots/Spotlight_Mode.png)
 
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0)
 [![.NET 9.0](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
@@ -341,53 +341,55 @@ The screenshots below were taken on Beta 1 and have not all been updated to the 
 
 #### Home
 
-![Cinecore Player Home](Screenshots/Screenshot%202026-09-28%20105605.png)
+![Cinecore Player Home](Screenshots/Home.png)
 
 #### Film Library
 
-![Cinecore Player Film Library](Screenshots/Screenshot%202026-09-28%20105926.png)
+![Cinecore Player Film Library](Screenshots/Film_Library.png)
 
 #### Movie Details
 
-![Cinecore Player Movie Details](Screenshots/Screenshot%202026-09-28%20110447.png)
+![Cinecore Player Movie Details](Screenshots/Film_Deatails.png)
 
 #### Viewing Diary
 
-![Cinecore Player Viewing Diary](Screenshots/Screenshot%202026-09-28%20110338.png)
+![Cinecore Player Viewing Diary](Screenshots/Diary.png)
 
 ### 🎵 Music, Player & Audio Analysis
 
 #### Music Home
 
-![Cinecore Player Music Home](Screenshots/Screenshot%202026-09-28%20105955.png)
+![Cinecore Player Music Home](Screenshots/Music_Library.png)
 
 #### Album / Track View & Global Player
 
-![Cinecore Player Album View](Screenshots/Screenshot%202026-09-28%20110024.png)
+![Cinecore Player Album View](Screenshots/Visualizzazione_Album.png)
+
+![Cinecore Player Global Player](Screenshots/Music_Library_WhilePlaying.png)
 
 #### Real-Time Audio Analysis
 
-![Cinecore Player Audio Analysis](Screenshots/Screenshot%202026-09-28%20110106.png)
+![Cinecore Player Audio Analysis](Screenshots/Graphs_Panoramic.png)
 
 #### Lyrics
 
-![Cinecore Player Lyrics](Screenshots/Screenshot%202026-09-28%20110202.png)
+![Cinecore Player Lyrics](Screenshots/Lyrics.png)
 
 ### 🌐 Network & Remote Control
 
 #### DLNA Server Selection
 
-![Cinecore Player DLNA](Screenshots/Screenshot%202026-09-28%20110402.png)
+![Cinecore Player DLNA](Screenshots/DLNA.png)
 
 #### Browser Remote
 
-![Cinecore Player Browser Remote](Screenshots/WhatsApp%20Image%202026-09-28%20at%2011.11.36.jpeg)
+![Cinecore Player Browser Remote](Screenshots/remote.jpeg)
 
 ### ⚙️ Settings
 
 #### General Settings
 
-![Cinecore Player Settings](Screenshots/Screenshot%202026-09-28%20110712.png)
+![Cinecore Player Settings](Screenshots/General_Settings.png)
 
 ---
 
