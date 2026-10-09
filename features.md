@@ -1,184 +1,184 @@
-﻿# Cinecore Player: tutte le funzioni
+# Cinecore Player: All Features
 
-Versione di riferimento: Beta 3.6 (0.3.6), 8 ottobre 2026.
-Elenco ricavato dal codice del player, voce per voce. Le funzioni aggiunte nella 3.6 sono segnate con **(3.6)**.
+Reference version: Beta 3.6 (0.3.6), October 8, 2026.
+List compiled from the player's code, item by item. Features added in 3.6 are marked **(3.6)**.
 
-## 1. Cosa riproduce
+## 1. What it plays
 
-- **Video locali**: MKV, MP4, M2TS, TS, MOV, AVI, WMV, WebM e gli altri formati letti da LAV e da mpv.
-- **Musica locale**: MP3, FLAC, WAV, OGG, Opus, M4A, AAC, WMA e altri.
-- **Foto**: visualizzatore a tutta finestra con presentazione.
-- **Dischi**: Blu-ray e DVD da unità ottica, da cartella (BDMV o VIDEO_TS) e da immagine ISO, che viene montata da sola senza permessi di amministratore. I Blu-ray protetti si aprono solo se l'utente ha installato MakeMKV o importato un proprio file di chiavi: il player non ne contiene.
-- **DVD come su un lettore da tavolo (3.6)**: avvisi iniziali, menu del disco e contenuti speciali, con tutti i renderer (madVR, MPC Video Renderer, EVR) e nel formato corretto (16:9 o 4:3 anamorfico), anche passando da finestra a schermo intero. Nei menu ci si muove con frecce, Invio e Indietro della tastiera, con il mouse o con le frecce del telecomando sul telefono; il tasto M o la voce Menu del disco riportano al menu. Capitoli, tracce audio e sottotitoli si scelgono dal menu del player; menu e audio partono nella lingua dell'interfaccia quando il disco la offre. Richiede che la regione dell'unità coincida con quella del disco; se il disco non parte si passa da soli alla lettura diretta.
-- **Lettura diretta dei DVD (3.6)**: in Impostazioni › Generale si può scegliere di andare dritti al film senza menu (con mpv), scegliendo capitoli, audio, sottotitoli e titoli del disco dal menu del player.
-- **Ripresa dei dischi (3.6)**: alla riapertura di un disco visto in parte compare una schermata a tutto schermo con l'immagine del film e la scelta Riprendi o Ricomincia, come su un lettore (frecce e Invio, mouse o telecomando). Sulla timeline dei dischi compare l'orario sotto il puntatore, senza fotogramma di anteprima (un secondo lettore sullo stesso disco fermerebbe il film).
-- **Ritaglio del video (3.6)**: da Video › Ritaglio si sceglie il formato (4:3, 16:9, 1,85, 2,00, 2,20, 2,35, 2,39, 2,76) e l'immagine viene tagliata al centro, con madVR, MPC Video Renderer, EVR e mpv; vale per il film in corso.
-- **Schermate di caricamento (3.6)**: sfondo e titolo del film con una barra di avanzamento a tutta larghezza che arriva in fondo prima dell'inizio; per i CD la copertina dell'album e poi la foto larga dell'artista.
-- **Barra musicale (3.6)**: isola di vetro centrata e arrotondata, con la pagina visibile attorno.
-- **Telecomando (3.6)**: tempo scrivibile toccando il minuto corrente, tocco visibile sui tasti, nessuna selezione di sistema su iPhone; a schermo una pillola compatta per volume (con i dB dell'amplificatore) e messaggi, e la timeline del player che segue il trascinamento dal telefono.
-- **Spagnolo (3.6)**: terza lingua dell'interfaccia, da Impostazioni › Generale › Lingua; circa 1.300 testi tradotti. Restano in inglese la pagina del telecomando, alcuni messaggi composti al momento e le trame di TMDb.
-- **Cast durante il film (3.6)**: un tasto nell'overlay di riproduzione apre il cast con fotografie e personaggi.
-- **Pannello Info (3.6)**: prima il film (locandina, anno, durata, voto, trama e cast), poi i dati tecnici.
-- **Dischi in libreria (3.6)**: il disco inserito compare tra i film o tra gli album e come voce sotto Dispositivi, finché resta nel lettore.
-- **Uscite audio (3.6)**: corretto il blocco collegando un dispositivo audio mentre suona un CD (un solo lettore sul disco, la copia per i testi cede il passo alla musica, il lettore si interroga solo quando Windows segnala un cambiamento); se l'uscita in uso sparisce il brano si riapre da solo nello stesso punto.
-- **Schermo intero e analisi audio (3.6)**: passaggio a schermo intero e ritorno senza la finestra intermedia; l'immagine del caricamento non traspare più sotto il film; il selettore dei grafici ha un tratto uguale sotto ogni voce, grigio, colorato su quella scelta; libreria, grafici, testo, voci dell'analisi e riquadro PiP si danno il cambio in dissolvenza; tornando da Spotlight con la musica in corso non resta più lo schermo nero.
-- **Caricamento (3.6)**: la barra arriva in fondo prima che il film parta e scorre in modo uniforme; nel logo d'avvio l'ultima lettera non compare più di scatto.
-- **Interfaccia (3.6)**: trame e righe del cast con un carattere pensato per i corpi piccoli; cambio tema chiaro/scuro in dissolvenza; selettore dei grafici audio di solo testo con tratto colorato; schermo intero subito sotto Play nel menu del tasto destro.
-- **Spotlight (3.6)**: i titoli iniziati e da riprendere vengono per primi, dal più recente; quando è vuoto una pagina spiega cosa aggiungere e porta alla libreria; l'interruttore Libreria / Rete segue sempre la sorgente salvata.
-- **CD audio (3.6)**: il CD nel lettore si apre come un album (da Apri › Apri disco, dall'unità o da una sua traccia), con le tracce in coda. Il disco viene riconosciuto dall'indice delle tracce tramite MusicBrainz, che fornisce titoli, artista, anno e copertina; senza rete o se il disco non è in archivio restano Traccia 1, 2… L'audio è letto dal disco senza perdita e suonato dal Cinecore Audio Engine, quindi con passaggio senza pause tra i brani, uscita esclusiva o bit-perfect, equalizzatore, testi e registrazione degli ascolti. I dati di un disco già visto restano salvati: la volta dopo si apre senza rete.
-- **Schermata prima del film anche per i dischi (3.6)**: se attiva, il disco viene presentato con il titolo e lo sfondo del film presi da TMDb a partire dall'etichetta del disco.
-- **Server di rete**: DLNA, Jellyfin ed Emby **(3.6)**.
-- **YouTube**: tramite yt-dlp, con limite di risoluzione da 144p a 8K.
-- **File aperti da Esplora file**: "Apri con", doppio clic e trascinamento; se il player è già aperto il file passa alla finestra esistente.
+- **Local video**: MKV, MP4, M2TS, TS, MOV, AVI, WMV, WebM and the other formats read by LAV and mpv.
+- **Local music**: MP3, FLAC, WAV, OGG, Opus, M4A, AAC, WMA and others.
+- **Photos**: full-window viewer with slideshow.
+- **Discs**: Blu-ray and DVD from an optical drive, from a folder (BDMV or VIDEO_TS) and from an ISO image, which is mounted automatically without administrator permissions. Protected Blu-rays open only if the user has installed MakeMKV or imported their own key file: the player does not include any.
+- **DVDs like on a standalone player (3.6)**: initial warnings, disc menus and special features, with all renderers (madVR, MPC Video Renderer, EVR) and in the correct format (16:9 or 4:3 anamorphic), even when switching between windowed and full screen. In menus you navigate with the keyboard's arrows, Enter and Back, with the mouse, or with the arrows on the phone remote; the M key or the Disc menu item returns to the menu. Chapters, audio tracks and subtitles are chosen from the player's menu; menus and audio start in the interface language when the disc offers it. Requires the drive's region to match the disc's; if the disc doesn't start, the player switches to direct reading on its own.
+- **Direct DVD reading (3.6)**: in Settings › General you can choose to go straight to the movie without menus (using mpv), selecting chapters, audio, subtitles and disc titles from the player's menu.
+- **Disc resume (3.6)**: when reopening a partly watched disc, a full-screen page appears with the movie's artwork and a Resume or Start over choice, like on a standalone player (arrows and Enter, mouse or remote). On the disc timeline the time under the pointer is shown, without a preview frame (a second reader on the same disc would stop the movie).
+- **Video cropping (3.6)**: from Video › Crop you choose the aspect ratio (4:3, 16:9, 1.85, 2.00, 2.20, 2.35, 2.39, 2.76) and the image is cropped at the center, with madVR, MPC Video Renderer, EVR and mpv; it applies to the current movie.
+- **Loading screens (3.6)**: background and movie title with a full-width progress bar that reaches the end before playback starts; for CDs, the album cover and then the wide artist photo.
+- **Music bar (3.6)**: centered, rounded glass island, with the page visible around it.
+- **Remote (3.6)**: time can be typed by tapping the current minute, visible touch feedback on buttons, no system text selection on iPhone; on screen, a compact pill for volume (with the amplifier's dB) and messages, and the player's timeline follows dragging from the phone.
+- **Spanish (3.6)**: third interface language, from Settings › General › Language; about 1,300 strings translated. The remote page, some messages composed on the fly and TMDb plots remain in English.
+- **Cast during the movie (3.6)**: a button in the playback overlay opens the cast with photos and characters.
+- **Info panel (3.6)**: the movie first (poster, year, duration, rating, plot and cast), then the technical data.
+- **Discs in the library (3.6)**: the inserted disc appears among the movies or albums and as an entry under Devices, as long as it stays in the drive.
+- **Audio outputs (3.6)**: fixed the freeze when connecting an audio device while a CD is playing (only one reader on the disc, the copy for lyrics yields to the music, the reader is queried only when Windows signals a change); if the output in use disappears, the track reopens by itself at the same point.
+- **Full screen and audio analysis (3.6)**: switching to full screen and back without the intermediate window; the loading image no longer shows through under the movie; the chart selector has an equal underline under each item, gray, colored on the selected one; library, charts, text, analysis items and the PiP frame cross-fade into each other; returning from Spotlight with music playing no longer leaves a black screen.
+- **Loading (3.6)**: the bar reaches the end before the movie starts and moves smoothly; in the startup logo the last letter no longer pops in abruptly.
+- **Interface (3.6)**: plots and cast rows with a typeface designed for small sizes; light/dark theme change with a cross-fade; text-only audio chart selector with colored underline; full screen right below Play in the right-click menu.
+- **Spotlight (3.6)**: started and resumable titles come first, most recent first; when empty, a page explains what to add and leads to the library; the Library / Network switch always follows the saved source.
+- **Audio CDs (3.6)**: the CD in the drive opens like an album (from Open › Open disc, from the drive or from one of its tracks), with the tracks queued. The disc is identified by its track index through MusicBrainz, which provides titles, artist, year and cover; without a network or if the disc isn't in the database, Track 1, 2… remain. Audio is read from the disc losslessly and played by the Cinecore Audio Engine, so with gapless playback between tracks, exclusive or bit-perfect output, equalizer, lyrics and scrobbling. Data for a disc already seen stays saved: the next time it opens without a network.
+- **Pre-movie screen for discs too (3.6)**: if enabled, the disc is introduced with the movie's title and background taken from TMDb based on the disc label.
+- **Network servers**: DLNA, Jellyfin and Emby **(3.6)**.
+- **YouTube**: via yt-dlp, with a resolution limit from 144p to 8K.
+- **Files opened from File Explorer**: "Open with", double-click and drag-and-drop; if the player is already open, the file is passed to the existing window.
 
-## 2. Motori video
+## 2. Video engines
 
-- **Quattro motori a scelta**: madVR, MPC Video Renderer, EVR (tutti su DirectShow con LAV) e mpv. "Auto" sceglie da solo; si possono impostare un motore per la sessione e uno predefinito.
-- **HDR**: passthrough al display, RTX Video HDR con MPC Video Renderer, conversione HDR → SDR con pixel shader oppure con 3DLUT, profili HDR di madVR.
-- **Upscaling**: madVR oppure NVIDIA RTX Super Resolution, con profili.
-- **Frequenza dello schermo**: cambio automatico alla cadenza del film, compresi i valori frazionari come 23,976 Hz.
-- **3D**: rilevamento automatico di Side-by-Side e Top/Bottom, conversione a 2D, uscita nativa, schermo intero esteso su più monitor (un occhio per schermo).
-- **File MKV con tracce "disattivate"**: vengono serviti al lettore con il flag corretto, senza riscrivere il file.
-- **Impostazioni dei componenti dentro il player**: pagine native per madVR, LAV Video, LAV Audio, MPC Video Renderer, MPC Audio Renderer, XySubFilter e mpv.
+- **Four engines to choose from**: madVR, MPC Video Renderer, EVR (all on DirectShow with LAV) and mpv. "Auto" chooses on its own; you can set one engine for the session and a default one.
+- **HDR**: passthrough to the display, RTX Video HDR with MPC Video Renderer, HDR → SDR conversion with pixel shader or with 3DLUT, madVR HDR profiles.
+- **Upscaling**: madVR or NVIDIA RTX Super Resolution, with profiles.
+- **Display refresh rate**: automatic switching to the movie's frame rate, including fractional values like 23.976 Hz.
+- **3D**: automatic detection of Side-by-Side and Top/Bottom, conversion to 2D, native output, extended full screen across multiple monitors (one eye per screen).
+- **MKV files with "disabled" tracks**: served to the player with the correct flag, without rewriting the file.
+- **Component settings inside the player**: native pages for madVR, LAV Video, LAV Audio, MPC Video Renderer, MPC Audio Renderer, XySubFilter and mpv.
 
-## 3. Immagine a schermo intero
+## 3. Full-screen image
 
-- **Dimensionamento**: Riempi, altezza costante, area costante e personalizzata, con cursore tra altezza e area costante e moltiplicatore per formato. Tasto `Z` durante il film.
-- **Bande nere**: misura del formato reale del fotogramma, anche quando cambia a metà film.
-- **Scene IMAX**: possono allargarsi a tutto schermo.
-- **Transizione animata** al cambio di formato, con durata a scelta.
-- **Avvio a schermo intero** del player, sullo schermo dove si trova il mouse.
-- **Adattamento allo schermo**: l'interfaccia si ridimensiona da sola cambiando monitor o scala di Windows.
+- **Sizing**: Fill, constant height, constant area and custom, with a slider between constant height and constant area and a per-format multiplier. `Z` key during the movie.
+- **Black bars**: measurement of the frame's real aspect ratio, even when it changes mid-movie.
+- **IMAX scenes**: can expand to full screen.
+- **Animated transition** when the aspect ratio changes, with selectable duration.
+- **Full-screen start** of the player, on the screen where the mouse is.
+- **Screen adaptation**: the interface resizes itself when changing monitor or Windows scale.
 
-## 4. Controlli durante la riproduzione
+## 4. Playback controls
 
-- **HUD**: timeline con anteprima del fotogramma, capitoli, volume, schermo intero, salti di 10 secondi.
-- **Scan veloce (3.6)**: tenendo premuto uno skip parte lo scorrimento veloce (x0,5, x1, x2, x4); ogni clic aumenta la velocità o inverte il verso, Play lo chiude.
-- **Passo singolo (3.6)**: `,` e `.` spostano di un fotogramma indietro o avanti, in pausa.
-- **Riprendi da dove eri**, per ogni titolo, con "Continua a guardare" in libreria.
-- **Volume per film**: il livello scelto durante un film viene ricordato per quel film.
-- **Amplificazione oltre il 100%** fino a +12 dB.
-- **Pannello Info**: sorgente, uscita, decodifica, audio, fotogrammi persi, origine del flusso; funziona anche su DLNA, Jellyfin ed Emby.
-- **Intro e titoli di coda**: rilevamento automatico per le serie (confronto dell'audio tra gli episodi) e pulsante per saltarli.
-- **Modalità PiP**: finestra piccola sempre in primo piano con i comandi essenziali.
-- **Menu del tasto destro** in vetro, con tutte le scelte di video, audio, sottotitoli ed extra.
-- **Tasti multimediali** della tastiera e scorciatoie (elenco al capitolo 16).
+- **HUD**: timeline with frame preview, chapters, volume, full screen, 10-second skips.
+- **Fast scan (3.6)**: holding a skip button starts fast scrolling (x0.5, x1, x2, x4); each click increases the speed or reverses direction, Play ends it.
+- **Single step (3.6)**: `,` and `.` move one frame back or forward, when paused.
+- **Resume where you left off**, for each title, with "Continue watching" in the library.
+- **Per-movie volume**: the level chosen during a movie is remembered for that movie.
+- **Amplification above 100%** up to +12 dB.
+- **Info panel**: source, output, decoding, audio, dropped frames, stream origin; also works on DLNA, Jellyfin and Emby.
+- **Intro and end credits**: automatic detection for series (audio comparison between episodes) and a button to skip them.
+- **PiP mode**: small always-on-top window with essential controls.
+- **Right-click menu** in glass style, with all video, audio, subtitle and extra options.
+- **Media keys** on the keyboard and shortcuts (list in chapter 16).
 
-## 5. Audio dei film
+## 5. Movie audio
 
-- **Scelta dell'uscita audio** e del dispositivo, con ritorno al predefinito del PC.
-- **Bitstream** (Dolby, DTS, TrueHD, DTS-HD) verso l'amplificatore oppure PCM forzato; "Auto" decide caso per caso.
-- **Tracce audio**: scelta dal menu e dal telecomando.
-- **Ritardo audio** regolabile al volo, a passi di 10 e 100 ms.
-- **Audio esterno**: si può affiancare al film un file audio separato; la sincronizzazione viene trovata da sola confrontando le due tracce e resta salvata per quel film.
-- **Analisi audio in tempo reale**: livelli, picco reale, correlazione, bilanciamento, ampiezza stereo; con il bitstream attivo l'analisi lavora su una decodifica parallela.
+- **Audio output** and device selection, with return to the PC's default.
+- **Bitstream** (Dolby, DTS, TrueHD, DTS-HD) to the amplifier or forced PCM; "Auto" decides case by case.
+- **Audio tracks**: selected from the menu and from the remote.
+- **Audio delay** adjustable on the fly, in 10 and 100 ms steps.
+- **External audio**: a separate audio file can be paired with the movie; synchronization is found automatically by comparing the two tracks and is saved for that movie.
+- **Real-time audio analysis**: levels, true peak, correlation, balance, stereo width; with bitstream active, the analysis works on a parallel decode.
 
-## 6. Sottotitoli
+## 6. Subtitles
 
-- **Tracce interne ed esterne**, scelta automatica (solo forzati) o manuale, XySubFilter con DirectShow.
-- **Ricerca e scaricamento** dal player: YIFY Subtitles per i film e Addic7ed per le serie senza account; **Subdl per film e serie (3.6)** con la chiave gratuita del proprio profilo; OpenSubtitles con il proprio account.
-- **34 lingue** nella ricerca, con lingua predefinita a scelta.
-- **Riallineamento automatico**: il file scaricato viene messo a tempo ascoltando l'audio del film; si può rifare su un sottotitolo già presente.
-- **Stile del testo e posizione** dalle impostazioni.
+- **Internal and external tracks**, automatic selection (forced only) or manual, XySubFilter with DirectShow.
+- **Search and download** from the player: YIFY Subtitles for movies and Addic7ed for series without an account; **Subdl for movies and series (3.6)** with the free key from your profile; OpenSubtitles with your own account.
+- **34 languages** in search, with a selectable default language.
+- **Automatic realignment**: the downloaded file is synced by listening to the movie's audio; it can be redone on an existing subtitle.
+- **Text style and position** from the settings.
 
-## 7. Libreria
+## 7. Library
 
-- **Sezioni**: Home, Film, Serie TV, Musica, Foto, Video, Playlist, Rete.
-- **Cartelle sorgenti** per i film e gli altri contenuti, aggiunte e tolte dall'interfaccia.
-- **Metadati da TMDb**: locandine, sfondi, trama, generi, cast, registi, episodi delle serie. Serve la propria chiave TMDb, gratuita, da inserire in Impostazioni › Generale › Metadati **(3.6)**.
-- **Correzione manuale**: titolo, anno, ricerca su TMDb e scelta della locandina tra quelle disponibili o da un file proprio.
-- **Scheda del titolo**: dettagli tecnici del file, cast, recensioni e voti di TMDb, IMDb, Letterboxd e Metacritic.
-- **Raccolte e filtri**: per genere, anno, decennio, regista, artista, cartella; ordinamenti per nome, data, durata, dimensione; preferiti, recenti, in corso, valutati.
-- **Ricerca globale** dalla Home su tutta la libreria.
-- **Continua a guardare e Diario** di ciò che è stato visto, con rimozione delle singole voci.
-- **Playlist** di video, musica, foto o miste, e **coda di riproduzione** modificabile.
-- **Rapporto della libreria**: quanti titoli, quanto spazio, quali formati, più i casi da controllare (doppioni, risoluzione o bitrate bassi, HDR con metadati incoerenti, file che non si aprono).
-- **Tema chiaro, scuro o come Windows**, colore d'accento e tavolozza personalizzabile.
+- **Sections**: Home, Movies, TV Series, Music, Photos, Videos, Playlists, Network.
+- **Source folders** for movies and other content, added and removed from the interface.
+- **Metadata from TMDb**: posters, backgrounds, plot, genres, cast, directors, series episodes. Requires your own free TMDb key, entered in Settings › General › Metadata **(3.6)**.
+- **Manual correction**: title, year, TMDb search and poster selection from those available or from your own file.
+- **Title page**: technical details of the file, cast, reviews and ratings from TMDb, IMDb, Letterboxd and Metacritic.
+- **Collections and filters**: by genre, year, decade, director, artist, folder; sorting by name, date, duration, size; favorites, recent, in progress, rated.
+- **Global search** from Home across the whole library.
+- **Continue watching and Diary** of what has been watched, with removal of individual entries.
+- **Playlists** of video, music, photos or mixed, and an editable **play queue**.
+- **Library report**: how many titles, how much space, which formats, plus cases to check (duplicates, low resolution or bitrate, HDR with inconsistent metadata, files that won't open).
+- **Light, dark or Windows theme**, accent color and customizable palette.
 
-## 8. Spotlight e modalità cinema
+## 8. Spotlight and cinema mode
 
-- **Spotlight**: interfaccia a tutto schermo in stile sala, con sfondi grandi, scelta tra libreria del PC e server di rete, ricerca e cast; può aprirsi all'avvio.
-- **Modalità cinema**: schermata segnaposto prima del film e filmato demo prima della proiezione, scelti dall'utente; lo sfondo può arrivare da TMDb.
+- **Spotlight**: full-screen theater-style interface, with large backgrounds, choice between the PC library and network servers, search and cast; can open at startup.
+- **Cinema mode**: placeholder screen before the movie and demo clip before the screening, chosen by the user; the background can come from TMDb.
 
-## 9. Rete: DLNA, Jellyfin, Emby
+## 9. Network: DLNA, Jellyfin, Emby
 
-- **DLNA**: ricerca automatica dei server, navigazione e riproduzione.
-- **Jellyfin**: ricerca in rete, accesso con nome e password oppure con Quick Connect, catalogo con i metadati del server, riproduzione del file originale, punto di ripresa e stato "visto" allineati con gli altri dispositivi.
-- **Emby (3.6)**: stesse funzioni di Jellyfin tranne Quick Connect, che Emby non ha.
-- **Qualità ridotta**: con un limite di bitrate il server converte il video al volo; vale per Jellyfin e per Emby.
-- **Token di accesso** salvati cifrati e mai scritti nei registri.
+- **DLNA**: automatic server discovery, browsing and playback.
+- **Jellyfin**: network discovery, login with username and password or with Quick Connect, catalog with the server's metadata, playback of the original file, resume point and "watched" status synced with other devices.
+- **Emby (3.6)**: same features as Jellyfin except Quick Connect, which Emby doesn't have.
+- **Reduced quality**: with a bitrate limit the server converts the video on the fly; applies to both Jellyfin and Emby.
+- **Access tokens** saved encrypted and never written to logs.
 
-## 10. Musica
+## 10. Music
 
-- **Cinecore Audio Engine**: motore proprio per la musica.
-  - Uscita WASAPI condivisa, esclusiva o bit perfect.
-  - Equalizzatore grafico a 10 o 31 bande oppure parametrico, con preset.
-  - Protezione dal clipping (margine o limitatore) con soffitto regolabile.
-  - Crossfeed per le cuffie, ampiezza stereo, bilanciamento, mono, loudness.
-  - ReplayGain per brano o per album, con preamplificazione.
-- **Dissolvenza tra i brani** (3, 6 o 10 secondi), esclusa tra brani consecutivi dello stesso album.
-- **Gapless (3.6)**: i brani consecutivi si attaccano senza pausa, anche in esclusivo e bit perfect.
-- **Area musica**: copertina, foto dell'artista, coda, preferiti, mini player.
-- **Testi**: ricerca automatica (LRCLIB, Genius, lyrics.ovh), testi sincronizzati quando disponibili, sincronizzazione automatica con riconoscimento dell'audio se è installato il modulo facoltativo.
-- **Foto degli artisti e copertine**: dal disco, poi da Spotify, TIDAL o Deezer (solo immagini e metadati, nessuno streaming).
-- **Radio**: a fine coda aggiunge brani simili presi dalla propria libreria, senza servizi esterni.
-- **Ripeti brano**, riproduzione casuale, avanzamento dell'album ricordato.
-- **Ascolti verso Last.fm e ListenBrainz (3.6)**: invio dei brani ascoltati, con coda per quando manca la rete.
+- **Cinecore Audio Engine**: dedicated engine for music.
+  - WASAPI output: shared, exclusive or bit-perfect.
+  - 10- or 31-band graphic equalizer or parametric, with presets.
+  - Clipping protection (headroom or limiter) with adjustable ceiling.
+  - Crossfeed for headphones, stereo width, balance, mono, loudness.
+  - ReplayGain per track or per album, with preamp.
+- **Crossfade between tracks** (3, 6 or 10 seconds), excluded between consecutive tracks of the same album.
+- **Gapless (3.6)**: consecutive tracks join without a pause, even in exclusive and bit-perfect modes.
+- **Music area**: cover, artist photo, queue, favorites, mini player.
+- **Lyrics**: automatic search (LRCLIB, Genius, lyrics.ovh), synced lyrics when available, automatic synchronization with audio recognition if the optional module is installed.
+- **Artist photos and covers**: from the disc, then from Spotify, TIDAL or Deezer (images and metadata only, no streaming).
+- **Radio**: at the end of the queue, adds similar tracks from your own library, without external services.
+- **Repeat track**, shuffle, remembered album progress.
+- **Scrobbling to Last.fm and ListenBrainz (3.6)**: submission of listened tracks, with a queue for when the network is unavailable.
 
-## 11. Foto
+## 11. Photos
 
-- **Visualizzatore**: zoom, rotazione, presentazione, primo e ultimo scatto.
-- **Modifica**: penna, evidenziatore, linea, freccia, rettangolo, ellisse, testo, filtri, colore preso dalla foto, annulla; salva sempre una copia.
-- **Azioni**: copia negli appunti, condividi con il pannello di Windows, stampa, apri con un'altra app, sposta nel Cestino.
+- **Viewer**: zoom, rotation, slideshow, first and last shot.
+- **Editing**: pen, highlighter, line, arrow, rectangle, ellipse, text, filters, color picked from the photo, undo; always saves a copy.
+- **Actions**: copy to clipboard, share with the Windows panel, print, open with another app, move to the Recycle Bin.
 
-## 12. Analisi HDR
+## 12. HDR analysis
 
-- **Metadati dichiarati**: schermo di mastering, MaxCLL, MaxFALL, Dolby Vision, HDR10+.
-- **Misura reale sul film**: picco e media in nit lungo tutta la durata, percentili, distribuzione della luminosità, quanta immagine esce da Rec.709 e da DCI-P3.
-- **Tempo reale**: forma d'onda RGB, vettorscopio, cromaticità CIE 1931, falsi colori.
-- **Esportazione** dell'analisi su file.
+- **Declared metadata**: mastering display, MaxCLL, MaxFALL, Dolby Vision, HDR10+.
+- **Real measurement on the movie**: peak and average in nits over the whole duration, percentiles, brightness distribution, how much of the image falls outside Rec.709 and DCI-P3.
+- **Real time**: RGB waveform, vectorscope, CIE 1931 chromaticity, false colors.
+- **Export** of the analysis to file.
 
-## 13. Telecomando dal telefono
+## 13. Phone remote
 
-- **Pagina web servita dal player**: si abbina inquadrando un codice QR, senza installare nulla; si può aggiungere alla schermata Home del telefono.
-- **Comandi**: play, pausa, stop, salti, scan veloce, capitoli, volume, schermo intero, frecce e OK, tastiera per scrivere sul PC.
-- **Tracce**: audio e sottotitoli.
-- **Libreria e coda** dal telefono, con scelta tra PC e server di rete.
-- **Impostazioni (riordinate nella 3.6)**: Riproduzione, Schermo, Player, Componenti avanzati, Telecomando. Comprendono renderer, HDR, 3D, upscaling, qualità Jellyfin/Emby, avvio a schermo intero, tema, lingua e le pagine complete dei componenti.
-- **Personalizzazione (3.6)**: ordine e presenza dei blocchi, colore, pagina iniziale, vibrazione al tocco.
-- **Proposta di abbinamento** al primo avvio del player.
+- **Web page served by the player**: pair by scanning a QR code, with nothing to install; can be added to the phone's Home screen.
+- **Controls**: play, pause, stop, skips, fast scan, chapters, volume, full screen, arrows and OK, keyboard for typing on the PC.
+- **Tracks**: audio and subtitles.
+- **Library and queue** from the phone, with a choice between PC and network server.
+- **Settings (reorganized in 3.6)**: Playback, Display, Player, Advanced components, Remote. They include renderer, HDR, 3D, upscaling, Jellyfin/Emby quality, full-screen start, theme, language and the components' full pages.
+- **Customization (3.6)**: order and presence of blocks, color, home page, haptic feedback on touch.
+- **Pairing prompt** at the player's first launch.
 
-## 14. Dispositivi di casa
+## 14. Home devices
 
-- **Amplificatore via rete**: volume e mute del ricevitore dal player, con limiti di sicurezza (mai più di 3 dB per comando, tetto massimo, avvio al livello usato l'ultima volta).
-- **Luci WLED**: si spengono o si abbassano durante la riproduzione.
-- **Automazioni**: all'avvio, in pausa, alla ripresa, allo stop e ai titoli di coda il player può inviare una richiesta HTTP (GET o POST) o un messaggio MQTT, per esempio a Home Assistant.
+- **Network amplifier**: receiver volume and mute from the player, with safety limits (never more than 3 dB per command, maximum ceiling, start at the last level used).
+- **WLED lights**: turn off or dim during playback.
+- **Automations**: at start, pause, resume, stop and end credits the player can send an HTTP request (GET or POST) or an MQTT message, for example to Home Assistant.
 
-## 15. Servizi collegati e aggiornamenti
+## 15. Connected services and updates
 
-- **Trakt**: collegamento con codice, consigli personali, invio di ciò che si è visto e dei voti.
-- **Aggiornamento del player** dalle release di GitHub, con verifica dell'impronta dell'installer; controllo all'avvio facoltativo.
-- **Componenti esterni**: versioni e aggiornamenti di yt-dlp, LAV Filters e MakeMKV dall'interno del player.
-- **Avvio con Windows** facoltativo.
-- **Italiano e inglese** in tutta l'interfaccia.
-- **Chiavi e token**: mai in chiaro nei file o nei registri. Nel programma ci sono solo le chiavi dell'applicazione (Trakt e Last.fm); quelle legate a un account personale (TMDb, Subdl, OpenSubtitles, Spotify, TIDAL) le inserisce ogni utente e restano nel suo profilo di Windows, cifrate.
+- **Trakt**: code-based linking, personal recommendations, submission of what you've watched and your ratings.
+- **Player update** from GitHub releases, with installer fingerprint verification; optional check at startup.
+- **External components**: versions and updates of yt-dlp, LAV Filters and MakeMKV from within the player.
+- **Start with Windows**, optional.
+- **Italian and English** across the whole interface.
+- **Keys and tokens**: never in plain text in files or logs. The program contains only the application's own keys (Trakt and Last.fm); those tied to a personal account (TMDb, Subdl, OpenSubtitles, Spotify, TIDAL) are entered by each user and remain in their Windows profile, encrypted.
 
-## 16. Scorciatoie da tastiera
+## 16. Keyboard shortcuts
 
-| Tasto | Azione |
+| Key | Action |
 |---|---|
-| Spazio | Play / pausa (in foto: presentazione) |
-| ← → | Indietro / avanti di 10 secondi (in foto: precedente / successiva) |
-| `,` `.` | Fotogramma precedente / successivo |
-| Pag↑ Pag↓ | Capitolo successivo / precedente |
-| ↑ ↓ | Volume, e oltre il 100% l'amplificazione |
-| F | Schermo intero |
-| Maiusc+F | Schermo intero esteso |
-| Z | Dimensionamento dell'immagine |
-| Ctrl + / Ctrl − | Ritardo audio di 10 ms (con Maiusc: 100 ms) |
-| Ctrl 0 | Azzera il ritardo audio |
-| O | Apri file |
-| S | Chiudi e torna alla libreria |
-| Esc | Indietro / esci dallo schermo intero |
-| In foto: + − 0 R | Zoom, vista iniziale, rotazione |
-| In foto: Inizio / Fine | Prima / ultima foto |
+| Space | Play / pause (in photos: slideshow) |
+| ← → | Back / forward 10 seconds (in photos: previous / next) |
+| `,` `.` | Previous / next frame |
+| PgUp PgDn | Next / previous chapter |
+| ↑ ↓ | Volume, and above 100% amplification |
+| F | Full screen |
+| Shift+F | Extended full screen |
+| Z | Image sizing |
+| Ctrl + / Ctrl − | Audio delay of 10 ms (with Shift: 100 ms) |
+| Ctrl 0 | Reset audio delay |
+| O | Open file |
+| S | Close and return to the library |
+| Esc | Back / exit full screen |
+| In photos: + − 0 R | Zoom, initial view, rotation |
+| In photos: Home / End | First / last photo |
