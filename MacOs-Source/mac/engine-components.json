@@ -1,0 +1,37 @@
+{
+  "_comment": "Componenti di terze parti del motore madVR/MPC-VR: l'app li scarica dai siti degli autori (come l'installer di Windows), non dal pacchetto di Cinecore. build-engine-pack.sh toglie dal pacchetto i file identici a questi archivi e scrive nel manifesto dove vanno e la loro impronta. Le impronte qui sono quelle degli archivi ufficiali verificate il 2026-11-20.",
+  "components": [
+    {
+      "name": "madVR",
+      "version": "0.92.17",
+      "url": "https://www.madshi.net/madVR.zip",
+      "sha256": "336651a376890dfb56d4f14871f4e8c7d495d79ceb4d0d69a48f62236f4af623",
+      "zipRoot": "madVR/",
+      "dest": "drive_c/Cinecore/madVR"
+    },
+    {
+      "name": "MPC Video Renderer",
+      "version": "0.9.7.2387",
+      "url": "https://github.com/Aleksoid1978/VideoRenderer/releases/download/0.9.7/MpcVideoRenderer-0.9.7.2387.zip",
+      "sha256": "15f75c82b9bb1a37d146af350e999f5bf81294f2f32784236dde88094ba2ac73",
+      "zipRoot": "",
+      "dest": "drive_c/Cinecore/MPCVR"
+    },
+    {
+      "name": "LAV Filters",
+      "version": "0.80",
+      "url": "https://github.com/Nevcairiel/LAVFilters/releases/download/0.80/LAVFilters-0.80-x64.zip",
+      "sha256": "c121f087d1d48b6abd38a641a3c5d1e391cd136b9b4ead31c19cd3b098542650",
+      "zipRoot": "",
+      "dest": "drive_c/Cinecore/LAV"
+    },
+    {
+      "name": "XySubFilter",
+      "version": "3.1.0.752",
+      "url": "https://github.com/Cyberbeing/xy-VSFilter/releases/download/3.1.0.752/XySubFilter_3.1.0.752_x64.zip",
+      "sha256": "13cae8c9e5ce367e74771a803be6aa821f922e7897e14cff9a1f2529fc185f66",
+      "zipRoot": "",
+      "dest": "drive_c/Cinecore/XySubFilter"
+    }
+  ]
+}

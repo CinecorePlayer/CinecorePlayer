@@ -1,0 +1,507 @@
+Cinecore: Dolby TrueHD/Atmos decoder through LibTrueHD (MIT/Apache-2.0) with an object renderer to 7.1.4, for the spatial output. Enabled with --ad-truehd-atmos=yes; bitstream keeps priority, and a failed init falls back to libavcodec.
+
+--- a/filters/f_decoder_wrapper.c	2026-11-21 18:41:26
++++ b/filters/f_decoder_wrapper.c	2026-11-21 20:20:22
+@@ -102,6 +102,7 @@
+     char *audio_decoders;
+     char *video_decoders;
+     char *audio_spdif;
++    bool truehd_atmos;
+     struct dec_queue_opts *vdec_queue_opts;
+     struct dec_queue_opts *adec_queue_opts;
+     int64_t video_reverse_size;
+@@ -124,6 +125,7 @@
+         {"audio-spdif", OPT_STRING(audio_spdif),
+             .flags = UPDATE_AD,
+             .help = decoder_list_help},
++        {"ad-truehd-atmos", OPT_BOOL(truehd_atmos), .flags = UPDATE_AD},
+         {"video-rotate", OPT_CHOICE(video_rotate, {"no", -1}),
+             .flags = UPDATE_IMGPAR, M_RANGE(0, 359)},
+         {"video-aspect-override", OPT_ASPECT(movie_aspect),
+@@ -468,6 +470,16 @@
+         }
+     }
+ 
++    // TrueHD with Atmos objects rendered to 7.1.4 (LibTrueHD), for a spatial
++    // renderer; bitstream (spdif, chosen above) keeps priority.
++    if (driver == &ad_lavc && !list && p->opts->truehd_atmos && p->codec->codec &&
++        strcmp(p->codec->codec, "truehd") == 0)
++    {
++        driver = &ad_truehd_atmos;
++        list = talloc_zero(NULL, struct mp_decoder_list);
++        ad_truehd_atmos.add_decoders(list);
++    }
++
+     if (!driver)
+         return false;
+ 
+@@ -501,6 +513,13 @@
+         MP_WARN(p, "Decoder init failed for %s\n", sel->decoder);
+     }
+ 
++    if (!p->decoder && driver == &ad_truehd_atmos) {
++        MP_WARN(p, "TrueHD object renderer unavailable, using libavcodec\n");
++        p->decoder = ad_lavc.create(p->decf, p->codec, "truehd");
++        if (p->decoder)
++            p->codec->decoder = talloc_strdup(p->codec, "truehd");
++    }
++
+     if (!p->decoder) {
+         MP_ERR(p, "Failed to initialize a decoder for codec '%s'.\n",
+                p->codec->codec ? p->codec->codec : "<?>");
+--- a/filters/f_decoder_wrapper.h	2026-11-21 18:41:26
++++ b/filters/f_decoder_wrapper.h	2026-11-21 20:20:22
+@@ -113,6 +113,7 @@
+ extern const struct mp_decoder_fns ad_lavc;
+ extern const struct mp_decoder_fns ad_spdif;
+ extern const struct mp_decoder_fns ad_dsd;
++extern const struct mp_decoder_fns ad_truehd_atmos;
+ 
+ // Convenience wrapper for lavc based decoders. Treat lavc_state as private;
+ // init to all-0 on init and resets.
+--- a/meson.build	2026-11-21 18:41:26
++++ b/meson.build	2026-11-21 20:20:22
+@@ -63,6 +63,7 @@
+     'audio/decode/ad_dsd.c',
+     'audio/decode/ad_lavc.c',
+     'audio/decode/ad_spdif.c',
++    'audio/decode/ad_truehd_atmos.c',
+     'audio/filter/af_drop.c',
+     'audio/filter/af_format.c',
+     'audio/filter/af_lavcac3enc.c',
+--- /dev/null	2026-11-21 20:22:59
++++ b/audio/decode/ad_truehd_atmos.c	2026-11-21 20:22:59
+@@ -0,0 +1,433 @@
++/*
++ * Dolby TrueHD / Atmos decoder with an object renderer (Cinecore).
++ *
++ * LibTrueHD (MIT, on the Apache-2.0 truehd crate) decodes the TrueHD stream,
++ * including the Atmos object presentation (bed + up to 15 dynamic objects and
++ * their OAMD positions). This decoder renders that presentation to a 7.1.4
++ * speaker bed: bed channels go to their speakers, objects are amplitude panned
++ * in the room box (left/right, front/back, ear level/ceiling) following the
++ * metadata ramps. The 7.1.4 result is meant for a spatial renderer
++ * (--coreaudio-spatial: AUSpatialMixer on headphones or the Mac speakers).
++ *
++ * Enabled with --ad-truehd-atmos=yes; otherwise TrueHD goes to libavcodec as
++ * before (and to the receiver as bitstream with --audio-spdif).
++ *
++ * This file is part of mpv, LGPL-2.1-or-later.
++ */
++
++#include <math.h>
++#include <stdint.h>
++#include <string.h>
++
++#include "truehd_atmos.h"
++
++#include "audio/aframe.h"
++#include "audio/chmap.h"
++#include "audio/format.h"
++#include "common/codecs.h"
++#include "common/common.h"
++#include "common/msg.h"
++#include "demux/packet.h"
++#include "demux/stheader.h"
++#include "filters/f_decoder_wrapper.h"
++#include "filters/filter_internal.h"
++
++// Output: 7.1.4 in mpv's order.
++enum { O_FL, O_FR, O_FC, O_LFE, O_BL, O_BR, O_SL, O_SR, O_TFL, O_TFR, O_TBL, O_TBR, O_NUM };
++
++#define MAX_EL ((int)TRUEHD_ATMOS_MAX_CHANNELS)
++#define MAX_OUT_FRAMES (TRUEHD_ATMOS_MAX_BLOCK_FRAMES * 48)
++
++struct el_state {
++    float pos[3], gain, size;          // current (possibly mid-ramp)
++    float from[3], from_gain, from_size;
++    float to[3], to_gain, to_size;
++    uint32_t ramp_total, ramp_done;
++    bool snap, known;
++};
++
++struct priv {
++    TrueHDAtmosDecoder *dec;
++    struct mp_aframe_pool *pool;
++    struct mp_aframe *fmt;
++    int rate;
++    // rendering state
++    struct el_state el[MAX_EL];
++    float gains[MAX_EL][O_NUM];        // gains applied at the end of the last segment
++    int el_count;
++    uint32_t layout_serial;
++    // output accumulation (one mp_aframe per packet)
++    float *out[O_NUM];
++    int out_frames;
++    double out_pts;
++    struct mp_decoder public;
++};
++
++static float clampf(float v, float lo, float hi) { return v < lo ? lo : v > hi ? hi : v; }
++
++// Constant-power pan between two outputs, t in [0,1].
++static void pan2(float *g, int a, int b, float t, float w)
++{
++    t = clampf(t, 0, 1);
++    g[a] += w * cosf(t * (float)M_PI_2);
++    g[b] += w * sinf(t * (float)M_PI_2);
++}
++
++// Object position (OAMD room coordinates) to 7.1.4 gains, sum of squares 1.
++static void pan_object(float x, float y, float z, float size, bool snap, float *g)
++{
++    memset(g, 0, sizeof(float) * O_NUM);
++    x = clampf(x, 0, 1); y = clampf(y, 0, 1); z = clampf(z, 0, 1);
++    float ear = cosf(z * (float)M_PI_2), top = sinf(z * (float)M_PI_2);
++
++    // Ear level: front row (L C R) at y = 0, side row at y = 0.5, back row at y = 1.
++    float row[3] = {0};
++    if (y <= 0.5f) pan2(row, 0, 1, y / 0.5f, 1);
++    else           pan2(row, 1, 2, (y - 0.5f) / 0.5f, 1);
++    if (row[0] > 0) {
++        if (x <= 0.5f) pan2(g, O_FL, O_FC, x / 0.5f, ear * row[0]);
++        else           pan2(g, O_FC, O_FR, (x - 0.5f) / 0.5f, ear * row[0]);
++    }
++    if (row[1] > 0) pan2(g, O_SL, O_SR, x, ear * row[1]);
++    if (row[2] > 0) pan2(g, O_BL, O_BR, x, ear * row[2]);
++
++    // Ceiling: top front pair and top back pair.
++    if (top > 0) {
++        float tf = cosf(y * (float)M_PI_2), tb = sinf(y * (float)M_PI_2);
++        pan2(g, O_TFL, O_TFR, x, top * tf);
++        pan2(g, O_TBL, O_TBR, x, top * tb);
++    }
++
++    if (snap) {
++        int best = 0;
++        for (int n = 1; n < O_NUM; n++)
++            if (g[n] > g[best]) best = n;
++        memset(g, 0, sizeof(float) * O_NUM);
++        g[best] = 1;
++    } else if (size > 0) {
++        // A large object spreads towards every main speaker (LFE excluded).
++        size = clampf(size, 0, 1);
++        for (int n = 0; n < O_NUM; n++) {
++            if (n == O_LFE) continue;
++            g[n] = sqrtf((1 - size) * g[n] * g[n] + size / (O_NUM - 1));
++        }
++    }
++}
++
++// Bed speaker code to 7.1.4 gains.
++static void pan_bed(uint8_t spk, float *g)
++{
++    const float h = (float)M_SQRT1_2;
++    memset(g, 0, sizeof(float) * O_NUM);
++    switch (spk) {
++    case TRUEHD_ATMOS_SPEAKER_L:   g[O_FL] = 1; break;
++    case TRUEHD_ATMOS_SPEAKER_R:   g[O_FR] = 1; break;
++    case TRUEHD_ATMOS_SPEAKER_C:   g[O_FC] = 1; break;
++    case TRUEHD_ATMOS_SPEAKER_LFE:
++    case TRUEHD_ATMOS_SPEAKER_LFE2: g[O_LFE] = 1; break;
++    case TRUEHD_ATMOS_SPEAKER_LS:
++    case TRUEHD_ATMOS_SPEAKER_LSD: g[O_SL] = 1; break;
++    case TRUEHD_ATMOS_SPEAKER_RS:
++    case TRUEHD_ATMOS_SPEAKER_RSD: g[O_SR] = 1; break;
++    case TRUEHD_ATMOS_SPEAKER_LB:  g[O_BL] = 1; break;
++    case TRUEHD_ATMOS_SPEAKER_RB:  g[O_BR] = 1; break;
++    case TRUEHD_ATMOS_SPEAKER_CB:  g[O_BL] = g[O_BR] = h; break;
++    case TRUEHD_ATMOS_SPEAKER_TFL: g[O_TFL] = 1; break;
++    case TRUEHD_ATMOS_SPEAKER_TFR: g[O_TFR] = 1; break;
++    case TRUEHD_ATMOS_SPEAKER_TBL: g[O_TBL] = 1; break;
++    case TRUEHD_ATMOS_SPEAKER_TBR: g[O_TBR] = 1; break;
++    case TRUEHD_ATMOS_SPEAKER_TSL: g[O_TFL] = g[O_TBL] = h; break;
++    case TRUEHD_ATMOS_SPEAKER_TSR: g[O_TFR] = g[O_TBR] = h; break;
++    case TRUEHD_ATMOS_SPEAKER_TFC: g[O_TFL] = g[O_TFR] = h; break;
++    case TRUEHD_ATMOS_SPEAKER_TC:  g[O_TFL] = g[O_TFR] = g[O_TBL] = g[O_TBR] = 0.5f; break;
++    case TRUEHD_ATMOS_SPEAKER_LSC: g[O_FL] = g[O_FC] = h; break;
++    case TRUEHD_ATMOS_SPEAKER_RSC: g[O_FR] = g[O_FC] = h; break;
++    case TRUEHD_ATMOS_SPEAKER_LW:  g[O_FL] = g[O_SL] = h; break;
++    case TRUEHD_ATMOS_SPEAKER_RW:  g[O_FR] = g[O_SR] = h; break;
++    default: break;
++    }
++}
++
++static void reset_render(struct priv *p)
++{
++    memset(p->el, 0, sizeof(p->el));
++    memset(p->gains, 0, sizeof(p->gains));
++    p->el_count = 0;
++}
++
++static void start_update(struct priv *p, const TrueHDAtmosMetadataUpdate *u, int count)
++{
++    for (int i = 0; i < count && i < MAX_EL; i++) {
++        const TrueHDAtmosElement *e = &u->elements[i];
++        struct el_state *s = &p->el[i];
++        if (s->known && !(e->flags & TRUEHD_ATMOS_ELEMENT_CHANGED))
++            continue;
++        float gain = (e->flags & TRUEHD_ATMOS_ELEMENT_ACTIVE) || e->kind != TRUEHD_ATMOS_ELEMENT_OBJECT ? e->gain : 0;
++        float size = (e->size[0] + e->size[1] + e->size[2]) / 3;
++        memcpy(s->to, e->position, sizeof(s->to));
++        s->to_gain = gain;
++        s->to_size = size;
++        s->snap = e->flags & TRUEHD_ATMOS_ELEMENT_SNAP;
++        if (!s->known || !u->ramp_frames) {
++            memcpy(s->pos, s->to, sizeof(s->pos));
++            s->gain = gain; s->size = size;
++            s->ramp_total = s->ramp_done = 0;
++        } else {
++            memcpy(s->from, s->pos, sizeof(s->from));
++            s->from_gain = s->gain; s->from_size = s->size;
++            s->ramp_total = u->ramp_frames; s->ramp_done = 0;
++        }
++        s->known = true;
++    }
++}
++
++static void advance(struct priv *p, uint32_t frames)
++{
++    for (int i = 0; i < p->el_count; i++) {
++        struct el_state *s = &p->el[i];
++        if (!s->ramp_total)
++            continue;
++        s->ramp_done = MPMIN(s->ramp_total, s->ramp_done + frames);
++        float t = s->ramp_done / (float)s->ramp_total;
++        for (int k = 0; k < 3; k++)
++            s->pos[k] = s->from[k] + (s->to[k] - s->from[k]) * t;
++        s->gain = s->from_gain + (s->to_gain - s->from_gain) * t;
++        s->size = s->from_size + (s->to_size - s->from_size) * t;
++        if (s->ramp_done == s->ramp_total)
++            s->ramp_total = 0;
++    }
++}
++
++// Target gains of every element after the current state.
++static void element_gains(struct priv *p, const TrueHDAtmosBlock *b, bool has_md,
++                          float out[MAX_EL][O_NUM])
++{
++    for (int i = 0; i < p->el_count; i++) {
++        uint8_t spk = b->speakers[i];
++        struct el_state *s = &p->el[i];
++        if (spk == TRUEHD_ATMOS_SPEAKER_OBJECT) {
++            if (!has_md || !s->known) { memset(out[i], 0, sizeof(out[i])); continue; }
++            pan_object(s->pos[0], s->pos[1], s->pos[2], s->size, s->snap, out[i]);
++            for (int n = 0; n < O_NUM; n++) out[i][n] *= s->gain;
++        } else {
++            pan_bed(spk, out[i]);
++            float gain = has_md && s->known ? s->gain : 1;
++            for (int n = 0; n < O_NUM; n++) out[i][n] *= gain;
++        }
++    }
++}
++
++// Mix frames [start, start+n) of the block with gains ramping from p->gains to target.
++static void mix_segment(struct priv *p, const TrueHDAtmosBlock *b, uint32_t start,
++                        uint32_t n, float target[MAX_EL][O_NUM])
++{
++    if (!n)
++        return;
++    for (int i = 0; i < p->el_count; i++) {
++        const float *src = b->channels[i] + start;
++        for (int o = 0; o < O_NUM; o++) {
++            float g0 = p->gains[i][o], g1 = target[i][o];
++            if (g0 == 0 && g1 == 0)
++                continue;
++            float *dst = p->out[o] + p->out_frames + start;
++            float step = (g1 - g0) / n;
++            for (uint32_t k = 0; k < n; k++)
++                dst[k] += src[k] * (g0 + step * (k + 1));
++        }
++    }
++    memcpy(p->gains, target, sizeof(p->gains));
++}
++
++static void render_block(struct priv *p, const TrueHDAtmosBlock *b)
++{
++    if (b->layout_serial != p->layout_serial || (b->flags & TRUEHD_ATMOS_BLOCK_DISCONTINUITY)) {
++        reset_render(p);
++        p->layout_serial = b->layout_serial;
++    }
++    p->el_count = MPMIN((int)b->channel_count, MAX_EL);
++    for (int o = 0; o < O_NUM; o++)
++        memset(p->out[o] + p->out_frames, 0, b->frame_count * sizeof(float));
++
++    bool has_md = (b->flags & TRUEHD_ATMOS_BLOCK_HAS_METADATA) && b->metadata;
++    float target[MAX_EL][O_NUM];
++    uint32_t pos = 0;
++    if (has_md) {
++        for (uint32_t u = 0; u < b->metadata->update_count; u++) {
++            const TrueHDAtmosMetadataUpdate *up = &b->metadata->updates[u];
++            uint32_t at = MPMIN(up->frame_offset, b->frame_count);
++            // frames before the update with the running state
++            advance(p, at - pos);
++            element_gains(p, b, true, target);
++            mix_segment(p, b, pos, at - pos, target);
++            pos = at;
++            start_update(p, up, b->metadata->element_count);
++        }
++        // An element snapshot without a fresh update (first block after a seek
++        // that missed the update): take it as a jump.
++        for (int i = 0; i < p->el_count; i++) {
++            if (!p->el[i].known && i < (int)b->metadata->element_count) {
++                TrueHDAtmosMetadataUpdate snap = { .elements = b->metadata->elements };
++                start_update(p, &snap, b->metadata->element_count);
++                break;
++            }
++        }
++    }
++    advance(p, b->frame_count - pos);
++    element_gains(p, b, has_md, target);
++    mix_segment(p, b, pos, b->frame_count - pos, target);
++    p->out_frames += b->frame_count;
++}
++
++static void flush_output(struct mp_filter *da)
++{
++    struct priv *p = da->priv;
++    if (!p->out_frames)
++        return;
++    struct mp_aframe *out = mp_aframe_new_ref(p->fmt);
++    if (mp_aframe_pool_allocate(p->pool, out, p->out_frames) < 0) {
++        talloc_free(out);
++        p->out_frames = 0;
++        return;
++    }
++    uint8_t **data = mp_aframe_get_data_rw(out);
++    for (int o = 0; o < O_NUM; o++)
++        memcpy(data[o], p->out[o], p->out_frames * sizeof(float));
++    mp_aframe_set_pts(out, p->out_pts);
++    p->out_frames = 0;
++    mp_pin_in_write(da->ppins[1], MAKE_FRAME(MP_FRAME_AUDIO, out));
++}
++
++static void process(struct mp_filter *da)
++{
++    struct priv *p = da->priv;
++
++    if (!mp_pin_can_transfer_data(da->ppins[1], da->ppins[0]))
++        return;
++
++    struct mp_frame inframe = mp_pin_out_read(da->ppins[0]);
++    if (inframe.type == MP_FRAME_EOF) {
++        mp_pin_in_write(da->ppins[1], inframe);
++        return;
++    } else if (inframe.type != MP_FRAME_PACKET) {
++        if (inframe.type) {
++            MP_ERR(da, "unknown frame type\n");
++            mp_filter_internal_mark_failed(da);
++        }
++        return;
++    }
++
++    struct demux_packet *mpkt = inframe.data;
++    int64_t pts = mpkt->pts == MP_NOPTS_VALUE ? TRUEHD_ATMOS_NO_PTS : llrint(mpkt->pts * 1e6);
++    TrueHDAtmosStatus st = truehd_atmos_decoder_push(p->dec, mpkt->buffer, mpkt->len, pts);
++    if (st < 0)
++        MP_WARN(da, "push: %s\n", truehd_atmos_decoder_last_error(p->dec));
++
++    TrueHDAtmosBlock b;
++    p->out_frames = 0;
++    p->out_pts = MP_NOPTS_VALUE;
++    while (truehd_atmos_decoder_pull(p->dec, &b) == TRUEHD_ATMOS_OK) {
++        if (b.sample_rate != (uint32_t)p->rate) {
++            // Rate change (another stream after a splice): new format from here.
++            flush_output(da);
++            p->rate = b.sample_rate;
++            mp_aframe_set_rate(p->fmt, p->rate);
++        }
++        if (p->out_frames + (int)b.frame_count > MAX_OUT_FRAMES)
++            flush_output(da);
++        if (!p->out_frames && b.pts != TRUEHD_ATMOS_NO_PTS)
++            p->out_pts = b.pts / 1e6 + (double)b.pts_au_index * b.access_unit_frames / b.sample_rate;
++        render_block(p, &b);
++    }
++    flush_output(da);
++    mp_filter_internal_mark_progress(da);
++    talloc_free(mpkt);
++}
++
++static void reset(struct mp_filter *da)
++{
++    struct priv *p = da->priv;
++    truehd_atmos_decoder_reset(p->dec);
++    reset_render(p);
++    p->layout_serial = 0;
++    p->out_frames = 0;
++}
++
++static void destroy(struct mp_filter *da)
++{
++    struct priv *p = da->priv;
++    if (p->dec)
++        truehd_atmos_decoder_destroy(p->dec);
++    p->dec = NULL;
++}
++
++static const struct mp_filter_info ad_truehd_atmos_filter = {
++    .name = "ad_truehd_atmos",
++    .priv_size = sizeof(struct priv),
++    .process = process,
++    .reset = reset,
++    .destroy = destroy,
++};
++
++static struct mp_decoder *create(struct mp_filter *parent,
++                                 struct mp_codec_params *codec,
++                                 const char *decoder)
++{
++    struct mp_filter *da = mp_filter_create(parent, &ad_truehd_atmos_filter);
++    if (!da)
++        return NULL;
++
++    mp_filter_add_pin(da, MP_PIN_IN, "in");
++    mp_filter_add_pin(da, MP_PIN_OUT, "out");
++    da->log = mp_log_new(da, parent->log, NULL);
++
++    struct priv *p = da->priv;
++    p->public.f = da;
++
++    if (truehd_atmos_api_version() != TRUEHD_ATMOS_API_VERSION) {
++        MP_ERR(da, "LibTrueHD API mismatch\n");
++        goto fail;
++    }
++    p->dec = truehd_atmos_decoder_create(TRUEHD_ATMOS_PRESENTATION_HIGHEST);
++    if (!p->dec)
++        goto fail;
++    truehd_atmos_decoder_set_ignore_interpolation(p->dec, true);
++
++    for (int o = 0; o < O_NUM; o++)
++        p->out[o] = talloc_array(p, float, MAX_OUT_FRAMES);
++
++    static const int spk[O_NUM] = {
++        MP_SPEAKER_ID_FL, MP_SPEAKER_ID_FR, MP_SPEAKER_ID_FC, MP_SPEAKER_ID_LFE,
++        MP_SPEAKER_ID_BL, MP_SPEAKER_ID_BR, MP_SPEAKER_ID_SL, MP_SPEAKER_ID_SR,
++        MP_SPEAKER_ID_TFL, MP_SPEAKER_ID_TFR, MP_SPEAKER_ID_TBL, MP_SPEAKER_ID_TBR,
++    };
++    struct mp_chmap map = { .num = O_NUM };
++    for (int o = 0; o < O_NUM; o++)
++        map.speaker[o] = spk[o];
++
++    p->rate = codec->samplerate > 0 ? codec->samplerate : 48000;
++    p->fmt = mp_aframe_create();
++    talloc_steal(p, p->fmt);
++    mp_aframe_set_chmap(p->fmt, &map);
++    mp_aframe_set_format(p->fmt, AF_FORMAT_FLOATP);
++    mp_aframe_set_rate(p->fmt, p->rate);
++    p->pool = mp_aframe_pool_create(p);
++
++    MP_INFO(da, "TrueHD rendered to 7.1.4 (LibTrueHD %s, objects panned in the room)\n",
++            truehd_atmos_version_string());
++    return &p->public;
++
++fail:
++    talloc_free(da);
++    return NULL;
++}
++
++static void add_decoders(struct mp_decoder_list *list)
++{
++    mp_add_decoder(list, "truehd", "truehd_atmos",
++                   "Dolby TrueHD/Atmos via LibTrueHD, objects rendered to 7.1.4");
++}
++
++const struct mp_decoder_fns ad_truehd_atmos = {
++    .create = create,
++    .add_decoders = add_decoders,
++};

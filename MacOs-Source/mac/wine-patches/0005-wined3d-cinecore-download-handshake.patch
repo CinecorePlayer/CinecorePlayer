@@ -1,0 +1,253 @@
+--- a/dlls/wined3d/texture_gl.c
++++ b/dlls/wined3d/texture_gl.c
+@@ -1889,7 +1889,7 @@
+  * destination is marked done. The application polls cinecore_download_wait() / cinecore_download_poll(). */
+ extern struct wined3d_texture *cinecore_download_dst;
+ 
+-struct cinecore_dst { void *dst; LONG queued; volatile LONG done; };
++struct cinecore_dst { void *dst; volatile LONG queued, done, failed; LONG expected; struct cinecore_dst *next; };
+ struct cinecore_pbo { GLuint pbo; GLsync fence; void *dst; void *map; LONG seq; GLsizeiptr size, alloc; volatile LONG state; BOOL surface; };
+ enum { CC_FREE, CC_READING, CC_MAPPED, CC_COPIED };
+ static LONGLONG cinecore_copy_us, cinecore_map_us, cinecore_read_us; static unsigned int cinecore_copies;
+@@ -1899,22 +1899,58 @@
+     HANDLE copy_evt, done_evt, thread[4];
+     BOOL ready, failed;
+     struct cinecore_pbo p[16];
+-    struct cinecore_dst dsts[64];
+-    unsigned int dst_count;
++    struct cinecore_dst *dsts;
+     LONG seq;
+     struct wined3d_device *device; /* fences belong to this device's GL contexts */
+     /* Parallel copy: the copy of one buffer is split in stripes over the copy threads. */
+     struct cinecore_pbo *job; volatile LONG stripes_left; HANDLE stripe_evt[8], stripe_done; unsigned int stripes;
+ } cinecore;
+ 
++/* The caller arms a destination before enqueueing the CS command. Polling an old completed download must
++ * never report the next (not yet processed) command as ready. Synchronisation is independent of GL init. */
++static INIT_ONCE cinecore_sync_once;
++static BOOL WINAPI cinecore_sync_init(INIT_ONCE *once, void *param, void **context)
++{
++    InitializeCriticalSection(&cinecore.cs);
++    cinecore.done_evt = CreateEventW(NULL, FALSE, FALSE, NULL);
++    return cinecore.done_evt != NULL;
++}
++static BOOL cinecore_sync_ready(void)
++{
++    return InitOnceExecuteOnce(&cinecore_sync_once, cinecore_sync_init, NULL, NULL);
++}
++
+ static struct cinecore_dst *cinecore_find_dst(void *dst, BOOL create)
+ {
+-    unsigned int i;
+-    for (i = 0; i < cinecore.dst_count; ++i)
+-        if (cinecore.dsts[i].dst == dst) return &cinecore.dsts[i];
+-    if (!create || cinecore.dst_count == ARRAY_SIZE(cinecore.dsts)) return NULL;
+-    cinecore.dsts[cinecore.dst_count].dst = dst;
+-    return &cinecore.dsts[cinecore.dst_count++];
++    struct cinecore_dst *d;
++    for (d = cinecore.dsts; d; d = d->next) if (d->dst == dst) return d;
++    if (!create || !(d = calloc(1, sizeof(*d)))) return NULL;
++    d->dst = dst;
++    d->next = cinecore.dsts;
++    cinecore.dsts = d;
++    return d;
++}
++
++BOOL CDECL cinecore_download_expect(void *dst)
++{
++    struct cinecore_dst *d;
++    if (!cinecore_sync_ready()) return FALSE;
++    EnterCriticalSection(&cinecore.cs);
++    if ((d = cinecore_find_dst(dst, TRUE))) d->queued = d->expected = ++cinecore.seq;
++    LeaveCriticalSection(&cinecore.cs);
++    return d != NULL;
++}
++
++int CDECL cinecore_download_status(void *dst)
++{
++    struct cinecore_dst *d;
++    int result = 0;
++    if (!cinecore_sync_ready()) return -1;
++    EnterCriticalSection(&cinecore.cs);
++    if ((d = cinecore_find_dst(dst, FALSE)) && d->done >= d->queued)
++        result = d->failed == d->queued ? -1 : 1;
++    LeaveCriticalSection(&cinecore.cs);
++    return result;
+ }
+ 
+ static void cinecore_mark_done(void *dst, LONG seq)
+@@ -1990,9 +2026,8 @@
+     if (!gl_info->supported[ARB_SYNC] || !gl_info->supported[ARB_PIXEL_BUFFER_OBJECT]
+             || !gl_info->supported[ARB_MAP_BUFFER_RANGE])
+         return FALSE;
+-    InitializeCriticalSection(&cinecore.cs);
++    if (!cinecore_sync_ready()) return FALSE;
+     cinecore.copy_evt = CreateEventW(NULL, FALSE, FALSE, NULL);
+-    cinecore.done_evt = CreateEventW(NULL, FALSE, FALSE, NULL);
+     cinecore.stripe_done = CreateEventW(NULL, FALSE, FALSE, NULL);
+     for (i = 0; i < ARRAY_SIZE(cinecore.p); ++i) GL_EXTCALL(glGenBuffers(1, &cinecore.p[i].pbo));
+     {
+@@ -2100,7 +2135,8 @@
+ 
+     EnterCriticalSection(&cinecore.cs);
+     d = cinecore_find_dst(dst_bo_addr->addr, TRUE);
+-    seq = d ? (d->queued = ++cinecore.seq) : 0;
++    seq = d ? (d->expected ? d->expected : (d->queued = ++cinecore.seq)) : 0;
++    if (d) d->expected = 0;
+     LeaveCriticalSection(&cinecore.cs);
+     if (!d) return FALSE;
+     if (src_box->right == 1 && src_box->bottom == 1)
+@@ -2118,6 +2154,7 @@
+     if (!b)
+     {
+         /* All buffers busy: skip this frame (the application keeps the previous one). */
++        InterlockedExchange(&d->failed, seq);
+         cinecore_mark_done(dst_bo_addr->addr, seq);
+         return TRUE;
+     }
+@@ -2138,6 +2175,7 @@
+         {
+             static int warned;
+             if (!warned++) ERR("Cinecore: IOSurface blit failed.\n");
++            InterlockedExchange(&d->failed, seq);
+             cinecore_mark_done(dst_bo_addr->addr, seq);
+             return TRUE;
+         }
+@@ -2208,7 +2246,7 @@
+     struct cinecore_dst *d;
+     DWORD start = GetTickCount();
+ 
+-    if (!cinecore.ready) return TRUE;
++    if (!cinecore_sync_ready()) return FALSE;
+     EnterCriticalSection(&cinecore.cs);
+     d = cinecore_find_dst(dst, FALSE);
+     LeaveCriticalSection(&cinecore.cs);
+@@ -2218,7 +2256,7 @@
+         if (cinecore.failed || GetTickCount() - start >= timeout_ms) return FALSE;
+         WaitForSingleObject(cinecore.done_evt, 1);
+     }
+-    return TRUE;
++    return d->failed != d->queued;
+ }
+ 
+ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
+--- a/dlls/wined3d/wined3d.spec
++++ b/dlls/wined3d/wined3d.spec
+@@ -409,3 +409,6 @@
+ 
+ @ cdecl cinecore_download_wait(ptr long)
+ @ cdecl cinecore_surface_create(long long)
++
++@ cdecl cinecore_download_expect(ptr)
++@ cdecl cinecore_download_status(ptr)
+--- a/dlls/wined3d/cinecore_mac.m
++++ b/dlls/wined3d/cinecore_mac.m
+@@ -225,9 +225,13 @@
+ }
+ 
+ /* GL side, on the thread with wined3d's context current. */
+-static struct { uint32_t id; GLuint rect; uint32_t width, height; } cc_gl[16];
++struct cc_gl_entry { uint32_t id; GLuint rect; uint32_t width, height; };
++static struct cc_gl_entry *cc_gl;
++static unsigned int cc_gl_count;
+ /* Framebuffer objects are not shared between GL contexts, and wined3d uses several: one pair per context. */
+-static struct { CGLContextObj ctx; uint32_t id; GLuint fbo_read, fbo_draw; } cc_fbo[64];
++struct cc_fbo_entry { CGLContextObj ctx; uint32_t id; GLuint fbo_read, fbo_draw; };
++static struct cc_fbo_entry *cc_fbo;
++static unsigned int cc_fbo_count;
+ 
+ static NTSTATUS cinecore_surface_blit(void *args)
+ {
+@@ -235,13 +239,21 @@
+     CGLContextObj ctx = CGLGetCurrentContext();
+     GLint prev_read, prev_draw, prev_rect;
+     GLboolean scissor, srgb;
++    BOOL gl_failed = FALSE;
+     GLuint fbo_read, fbo_draw;
+     unsigned int i;
+ 
+     params->ok = 0;
+     if (!ctx || !params->id) return STATUS_UNSUCCESSFUL;
+-    for (i = 0; i < 16 && cc_gl[i].id && cc_gl[i].id != params->id; ++i);
+-    if (i == 16) return STATUS_UNSUCCESSFUL;
++    pthread_mutex_lock(&cc_lock);
++    for (i = 0; i < cc_gl_count && cc_gl[i].id && cc_gl[i].id != params->id; ++i);
++    if (i == cc_gl_count)
++    {
++        struct cc_gl_entry *entries = realloc(cc_gl, (cc_gl_count + 1) * sizeof(*entries));
++        if (!entries) goto failed;
++        cc_gl = entries;
++        memset(&cc_gl[cc_gl_count++], 0, sizeof(*cc_gl));
++    }
+ 
+     glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prev_read);
+     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prev_draw);
+@@ -249,7 +261,7 @@
+     {
+         IOSurfaceRef s = IOSurfaceLookup(params->id);
+         CGLError err;
+-        if (!s) return STATUS_UNSUCCESSFUL;
++        if (!s) goto failed;
+         glGetIntegerv(GL_TEXTURE_BINDING_RECTANGLE, &prev_rect);
+         glGenTextures(1, &cc_gl[i].rect);
+         glBindTexture(GL_TEXTURE_RECTANGLE, cc_gl[i].rect);
+@@ -263,7 +275,7 @@
+         {
+             fprintf(stderr, "Cinecore: CGLTexImageIOSurface2D failed, error %d.\n", err);
+             glDeleteTextures(1, &cc_gl[i].rect);
+-            return STATUS_UNSUCCESSFUL;
++            goto failed;
+         }
+         cc_gl[i].id = params->id;
+         fprintf(stderr, "Cinecore: IOSurface %u bound to GL texture %u (%ux%u).\n", params->id, cc_gl[i].rect,
+@@ -271,16 +283,17 @@
+     }
+ 
+     {
+-        unsigned int f, free_slot = 64;
+-        for (f = 0; f < 64; ++f)
++        unsigned int f;
++        for (f = 0; f < cc_fbo_count; ++f)
+         {
+             if (cc_fbo[f].ctx == ctx && cc_fbo[f].id == params->id) break;
+-            if (!cc_fbo[f].ctx && free_slot == 64) free_slot = f;
+-        }
+-        if (f == 64)
+-        {
+-            if (free_slot == 64) return STATUS_UNSUCCESSFUL;
+-            f = free_slot;
++        }
++        if (f == cc_fbo_count)
++        {
++            struct cc_fbo_entry *entries = realloc(cc_fbo, (cc_fbo_count + 1) * sizeof(*entries));
++            if (!entries) goto failed;
++            cc_fbo = entries;
++            memset(&cc_fbo[cc_fbo_count++], 0, sizeof(*cc_fbo));
+             cc_fbo[f].ctx = ctx; cc_fbo[f].id = params->id;
+             glGenFramebuffers(1, &cc_fbo[f].fbo_read);
+             glGenFramebuffers(1, &cc_fbo[f].fbo_draw);
+@@ -295,7 +308,7 @@
+     while (glGetError() != GL_NO_ERROR); /* errors left by wined3d are not ours */
+     scissor = glIsEnabled(GL_SCISSOR_TEST);
+     srgb = glIsEnabled(GL_FRAMEBUFFER_SRGB);
+-#define CC_CHECK(what) do { GLenum e_ = glGetError(); static int n_; if (e_ && n_++ < 3) fprintf(stderr, "Cinecore: %s -> %#x\n", what, e_); } while (0)
++#define CC_CHECK(what) do { GLenum e_ = glGetError(); static int n_; if (e_) gl_failed = TRUE; if (e_ && n_++ < 3) fprintf(stderr, "Cinecore: %s -> %#x\n", what, e_); } while (0)
+     /* The read framebuffer (madVR's texture) was set up by wined3d itself on the Windows side. */
+     (void)fbo_read;
+     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo_draw); CC_CHECK("bind draw");
+@@ -309,10 +322,14 @@
+     {
+         GLenum e = glGetError();
+         static int logged;
+-        params->ok = e == GL_NO_ERROR;
++        params->ok = !gl_failed && e == GL_NO_ERROR;
+         if (!params->ok && logged++ < 5) fprintf(stderr, "Cinecore: blit GL error %#x.\n", e);
+     }
++    pthread_mutex_unlock(&cc_lock);
+     return STATUS_SUCCESS;
++failed:
++    pthread_mutex_unlock(&cc_lock);
++    return STATUS_UNSUCCESSFUL;
+ }
+ 
+ __attribute__((visibility("default"))) const unixlib_entry_t __wine_unix_call_funcs[] =

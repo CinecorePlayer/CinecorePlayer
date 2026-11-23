@@ -1,0 +1,16 @@
+Banner (hero) placeholders: used when no title has its own landscape backdrop (offline, or no TMDb key).
+Downloaded for Cinecore on 2026-11-18, cropped to 2400 x 1350 (16:9), then heavily blurred and desaturated (ffmpeg gblur) so only a soft wash of light remains. Unsplash License:
+https://unsplash.com/license — use and redistribution allowed, including commercial use, without attribution.
+Credits kept here for provenance.
+
+hero-placeholder-1.jpg  "An empty theater with red seats and a projector screen"
+  Photographer: wong zihoo (@zihoowong)
+  Source: https://unsplash.com/photos/an-empty-theater-with-red-seats-and-a-projector-screen-kRyJPPsLgbU
+
+hero-placeholder-2.jpg  "Cinema audience in dark theater"
+  Photographer: Jake Hills (@jakehills)
+  Source: https://unsplash.com/photos/cinema-audience-in-dark-theater-23LET4Hxj_U
+
+hero-placeholder-3.jpg  "Red cinema seat number 23"
+  Photographer: Kilyan Sockalingum (@kilyan_s)
+  Source: https://unsplash.com/photos/red-cinema-seat-number-23-nW1n9eNHOsc

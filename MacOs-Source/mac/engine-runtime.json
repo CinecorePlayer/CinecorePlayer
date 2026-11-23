@@ -1,0 +1,8 @@
+{
+  "name": "MetalSharp Wine",
+  "version": "6.0",
+  "url": "https://github.com/metalsharp/MetalSharp-Wine/releases/download/v6.0/MetalSharp-Wine-6.0-arm64.zip",
+  "sha256": "25f7dff91000c03c835b800980878acb12c1f952a4b7853f77de7f21fb87046f",
+  "size": 1356725682,
+  "app": "MetalSharp-Wine.app"
+}

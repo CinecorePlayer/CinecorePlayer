@@ -1,0 +1,12 @@
+{
+  "home": "original user assets",
+  "retained": [
+    "computer",
+    "network",
+    "link",
+    "time"
+  ],
+  "commands": "Tabler outline",
+  "strokeWidth": 1.5,
+  "aliases": "one glyph per function"
+}

@@ -1,0 +1,14 @@
+--- a/dlls/winemac.drv/cocoa_window.m
++++ b/dlls/winemac.drv/cocoa_window.m
+@@ -3189,7 +3189,11 @@
+     OnMainThreadAsync(^{
+         [window setTitle:titleString];
+         if ([titleString isEqualToString:@"Cinecore Video"])
++        {
++            /* The native Cinecore HUD owns mouse input, including on transparent parts of its window. */
++            [window setIgnoresMouseEvents:YES];
+             [window adjustFullScreenBehavior:[window collectionBehavior]];
++        }
+         if ([window isOrderedIn] && ![window isExcludedFromWindowsMenu])
+             [NSApp changeWindowsItem:window title:titleString filename:NO];
+     });

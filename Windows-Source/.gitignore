@@ -1,0 +1,20 @@
+# Build
+bin/
+obj/
+.vs/
+*.user
+Release/
+artifacts/
+
+# Componenti di terze parti (binari, vedi third-parties/README.md)
+third-parties/*
+!third-parties/README.md
+
+# Chiavi dell'applicazione (Trakt, Last.fm): mai nel repository
+mac-native/CinecoreMac/SecretVault.Keys.cs
+
+# Varie
+*.log
+__pycache__/
+.DS_Store
+Thumbs.db

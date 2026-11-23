@@ -1,0 +1,112 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Cinecore Player per macOS (nativo, Apple Silicon). L'interfaccia e' disegnata qui con Avalonia; il video lo
+       mostra il VideoHost (madVR / MPC Video Renderer) sotto Wine, in una finestra allineata sotto l'HUD. -->
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);CINECORE_MAC</DefineConstants>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AssemblyName>CinecoreMac</AssemblyName>
+    <Version>0.1.0</Version>
+    <InformationalVersion>Beta 1</InformationalVersion>
+    <RootNamespace>CinecoreMac</RootNamespace>
+    <RuntimeIdentifier>osx-arm64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Nomi delle tracce audio ripuliti come su Windows: lo stesso file. -->
+    <Compile Include="..\..\Utilities\SubtitleNameNormalizer.cs" Link="Shared\SubtitleNameNormalizer.cs" />
+    <Compile Include="..\..\Utilities\AppDataPaths.cs" Link="Shared\AppDataPaths.cs" />
+    <!-- Metadati di film e serie (TMDb), riconoscimento di titolo, anno ed episodi: gli stessi file di Windows. -->
+    <Compile Include="..\..\Utilities\MovieMetadataService*.cs" Link="Shared\%(Filename)%(Extension)" />
+    <!-- Server Jellyfin ed Emby: lo stesso client di Windows. -->
+    <Compile Include="..\..\Utilities\JellyfinClient.cs" Link="Shared\JellyfinClient.cs" />
+    <!-- Punto di ripresa dei file locali ("Continua a guardare"): lo stesso registro di Windows. -->
+    <Compile Include="..\..\Engines\PlaybackResumeStore.cs" Link="Shared\PlaybackResumeStore.cs" />
+    <Compile Include="..\..\Utilities\HiddenLibraryStore.cs" Link="Shared\HiddenLibraryStore.cs" />
+    <Compile Include="..\..\Utilities\MusicTextIdentity.cs" Link="Shared\MusicTextIdentity.cs" />
+    <Compile Include="..\..\Utilities\MusicLyricsService*.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="..\..\Utilities\LyricsSynchronization.cs" Link="Shared\LyricsSynchronization.cs" />
+    <Compile Include="..\..\Utilities\ProviderBackoff.cs" Link="Shared\ProviderBackoff.cs" />
+    <Compile Include="..\..\Utilities\GeniusClient.cs" Link="Shared\GeniusClient.cs" />
+    <Compile Include="..\..\Utilities\GeniusAvailability.cs" Link="Shared\GeniusAvailability.cs" />
+    <Compile Include="..\..\Utilities\LibraryReport.cs" Link="Shared\LibraryReport.cs" />
+    <Compile Include="..\..\Utilities\TraktClient.cs" Link="Shared\TraktClient.cs" />
+    <Compile Include="..\..\Utilities\TraktLibrary.cs" Link="Shared\TraktLibrary.cs" />
+    <Compile Include="..\..\Utilities\MusicScrobbler.cs" Link="Shared\MusicScrobbler.cs" />
+    <Compile Include="..\..\Utilities\MusicListeningStore.cs" Link="Shared\MusicListeningStore.cs" />
+    <Compile Include="..\..\Utilities\ExternalRatingsService.cs" Link="Shared\ExternalRatingsService.cs" />
+    <Compile Include="..\..\Utilities\LastFmSimilar.cs" Link="Shared\LastFmSimilar.cs" />
+    <Compile Include="..\..\Utilities\MusicArtistArtworkService*.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="..\..\Utilities\MusicArtworkService.cs" Link="Shared\MusicArtworkService.cs" />
+    <Compile Include="..\..\Utilities\MusicCatalog.cs" Link="Shared\MusicCatalog.cs" />
+    <Compile Include="..\..\Utilities\SpotifyArtistArtworkService.cs" Link="Shared\SpotifyArtistArtworkService.cs" />
+    <Compile Include="..\..\Utilities\TidalArtistArtworkService.cs" Link="Shared\TidalArtistArtworkService.cs" />
+    <Compile Include="..\..\Utilities\ExternalAudioSynchronization.cs" Link="Shared\ExternalAudioSynchronization.cs" />
+    <Compile Include="..\..\Utilities\AudioTrackAligner.cs" Link="Shared\AudioTrackAligner.cs" />
+    <Compile Include="..\..\Utilities\FasterWhisperLyricsRecognitionBackend.cs" Link="Shared\FasterWhisperLyricsRecognitionBackend.cs" />
+    <Compile Include="..\..\Utilities\MediaFileKinds.cs" Link="Shared\MediaFileKinds.cs" />
+    <Compile Include="..\..\Engines\WatchHistoryStore.cs" Link="Shared\WatchHistoryStore.cs" />
+    <Compile Include="..\..\Utilities\DiaryMediaPolicy.cs" Link="Shared\DiaryMediaPolicy.cs" />
+    <Compile Include="..\..\Utilities\PlaylistStore.cs" Link="Shared\PlaylistStore.cs" />
+    <Compile Include="..\..\Utilities\PlaybackSessionState.cs" Link="Shared\PlaybackSessionState.cs" />
+    <Compile Include="..\..\Utilities\SubtitleSources.cs" Link="Shared\SubtitleSources.cs" />
+    <Compile Include="..\..\Utilities\RemoteServer.cs" Link="Shared\RemoteServer.cs" />
+    <Compile Include="..\..\Utilities\RemoteServer.PageV2.cs" Link="Shared\RemoteServer.PageV2.cs" />
+    <Compile Include="..\..\Utilities\RemoteServer.PageV3.cs" Link="Shared\RemoteServer.PageV3.cs" />
+    <Compile Include="..\..\Utilities\RemoteServer.PageV4.cs" Link="Shared\RemoteServer.PageV4.cs" />
+    <Compile Include="..\..\Utilities\QrCode.cs" Link="Shared\QrCode.cs" />
+    <Compile Include="..\..\Utilities\AmplifierControl.cs" Link="Shared\AmplifierControl.cs" />
+    <Compile Include="..\..\Utilities\AssetIconService.cs" Link="Shared\AssetIconService.cs" />
+    <Compile Include="..\..\Utilities\IntroOutroScanService.cs" Link="Shared\IntroOutroScanService.cs" />
+    <Compile Include="..\..\Utilities\SpanishTexts*.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="..\..\Utilities\ExternalAudioStore.cs" Link="Shared\ExternalAudioStore.cs" />
+    <Compile Include="..\..\Utilities\FilmVolumeStore.cs" Link="Shared\FilmVolumeStore.cs" />
+    <Compile Include="..\..\Utilities\SubtitleFile.cs" Link="Shared\SubtitleFile.cs" />
+    <Compile Include="..\..\Utilities\SubtitleWorkflow.cs" Link="Shared\SubtitleWorkflow.cs" />
+    <Compile Include="..\..\Utilities\SubtitleAligner.cs" Link="Shared\SubtitleAligner.cs" />
+    <Compile Include="..\..\Utilities\SubtitleSyncCheck.cs" Link="Shared\SubtitleSyncCheck.cs" />
+    <Compile Include="..\..\Audio\CinecoreAudioDsp.cs" Link="Shared\Audio\CinecoreAudioDsp.cs" />
+    <Compile Include="..\..\Audio\AutomixAnalyzer.cs" Link="Shared\Audio\AutomixAnalyzer.cs" />
+    <Compile Include="..\..\Audio\AutomixAnalyzer.Beats.cs" Link="Shared\Audio\AutomixAnalyzer.Beats.cs" />
+    <Compile Include="..\..\Audio\AutomixPlanner.cs" Link="Shared\Audio\AutomixPlanner.cs" />
+    <Compile Include="..\..\Audio\AutomixPlanner.Cued.cs" Link="Shared\Audio\AutomixPlanner.Cued.cs" />
+    <Compile Include="..\..\Audio\AutomixPlanner.DjTechniques.cs" Link="Shared\Audio\AutomixPlanner.DjTechniques.cs" />
+    <Compile Include="..\..\Audio\AutomixRules.cs" Link="Shared\Audio\AutomixRules.cs" />
+    <Compile Include="..\..\Audio\AutomixPhaseAligner.cs" Link="Shared\Audio\AutomixPhaseAligner.cs" />
+    <Compile Include="..\..\Audio\ManualMixStore.cs" Link="Shared\Audio\ManualMixStore.cs" />
+    <Compile Include="..\..\Audio\TransitionCurves.cs" Link="Shared\Audio\TransitionCurves.cs" />
+    <Compile Include="..\..\Audio\TransitionCurves.DjTechniques.cs" Link="Shared\Audio\TransitionCurves.DjTechniques.cs" />
+    <Compile Include="..\..\Audio\MusicStructure.cs" Link="Shared\Audio\MusicStructure.cs" />
+    <Compile Include="..\..\Audio\MusicalSections.cs" Link="Shared\Audio\MusicalSections.cs" />
+    <Compile Include="..\..\Audio\KeyDetector.cs" Link="Shared\Audio\KeyDetector.cs" />
+    <Compile Include="..\..\Audio\TransitionShaper.cs" Link="Shared\Audio\TransitionShaper.cs" />
+    <Compile Include="..\..\Audio\TimeStretcher.cs" Link="Shared\Audio\TimeStretcher.cs" />
+    <Compile Include="..\..\Audio\RubberBandStretcher.cs" Link="Shared\Audio\RubberBandStretcher.cs" />
+    <Compile Include="..\..\AudioVideoSync\SyncDetector.cs" Link="Shared\AudioVideoSync\SyncDetector.cs" />
+    <Compile Include="..\..\AudioVideoSync\SyncModels.cs" Link="Shared\AudioVideoSync\SyncModels.cs" />
+    <Compile Include="..\..\AudioVideoSync\ExternalToolLocator.cs" Link="Shared\AudioVideoSync\ExternalToolLocator.cs" />
+    <Compile Include="..\..\AudioVideoSync\FfmpegAudioExtractor.cs" Link="Shared\AudioVideoSync\FfmpegAudioExtractor.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Icone e caratteri dell'app Windows, identici. -->
+    <Content Include="..\..\Assets\icons\**\*.svg" Link="Assets\icons\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\hud_icons\**\*.svg" Link="Assets\hud_icons\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\Icons.Uniform\*.svg" Link="Assets\Icons.Uniform\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\Icons.Lucide\*.svg" Link="Assets\Icons.Lucide\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\Icons.Custom\*.svg" Link="Assets\Icons.Custom\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\hud_icons_new\**\*.svg" Link="Assets\hud_icons_new\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\Network\*.jpg" Link="Assets\Network\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\HeroPlaceholders\*.jpg" Link="Assets\HeroPlaceholders\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <AvaloniaResource Include="..\..\Assets\Fonts\*.ttf" Link="Assets\Fonts\%(Filename)%(Extension)" />
+    <AvaloniaResource Include="Lang\*.tsv" />
+    <AvaloniaResource Include="..\..\Splash\*.png" Link="Splash\%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

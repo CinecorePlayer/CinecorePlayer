@@ -1,0 +1,319 @@
+--- a/dlls/wined3d/texture.c
++++ b/dlls/wined3d/texture.c
+@@ -28,6 +28,9 @@
+ 
+ #define WINED3D_TEXTURE_DYNAMIC_MAP_THRESHOLD 50
+ 
++/* Cinecore: destination of the download in progress (CS thread only), see texture_gl.c. */
++struct wined3d_texture *cinecore_download_dst;
++
+ struct wined3d_texture_idx
+ {
+     struct wined3d_texture *texture;
+@@ -2047,8 +2050,10 @@
+     dst_level = dst_sub_resource_idx % dst_texture->level_count;
+     wined3d_texture_get_pitch(dst_texture, dst_level, &dst_row_pitch, &dst_slice_pitch);
+ 
++    cinecore_download_dst = dst_texture;
+     src_texture->texture_ops->texture_download_data(context, src_texture, src_sub_resource_idx, src_location,
+             &src_box, &data, dst_texture->resource.format, 0, 0, 0, dst_row_pitch, dst_slice_pitch);
++    cinecore_download_dst = NULL;
+ 
+     context_release(context);
+ 
+--- a/dlls/wined3d/texture_gl.c
++++ b/dlls/wined3d/texture_gl.c
+@@ -1877,7 +1877,274 @@
+ 
+     free(temporary_mem);
+ }
++
++/* Cinecore (macOS): asynchronous downloads for GetRenderTargetData into CPU-only DYNAMIC textures with user
++ * memory. Apple's OpenGL reads textures back into client memory synchronously, stalling the CS thread on every
++ * frame (madVR's D3D11 path reads a 16-bit float frame per frame). A second shared GL context is no better (Apple
++ * serialises the share group) and mapping through d3d9's LockRect holds the global d3d9 mutex while the CS thread
++ * gets to the map. Here everything stays on the CS thread and never waits: glReadPixels into one of our pixel
++ * pack buffers plus a fence; on later downloads, signalled buffers are mapped (immediate) and handed to a copy
++ * thread without GL, which copies into the destination memory; the buffer is unmapped afterwards and the
++ * destination is marked done. The application polls cinecore_download_wait() / cinecore_download_poll(). */
++extern struct wined3d_texture *cinecore_download_dst;
+ 
++struct cinecore_dst { void *dst; LONG queued; volatile LONG done; };
++struct cinecore_pbo { GLuint pbo; GLsync fence; void *dst; void *map; LONG seq; GLsizeiptr size, alloc; volatile LONG state; };
++enum { CC_FREE, CC_READING, CC_MAPPED, CC_COPIED };
++static LONGLONG cinecore_copy_us, cinecore_map_us, cinecore_read_us; static unsigned int cinecore_copies;
++static struct
++{
++    CRITICAL_SECTION cs;
++    HANDLE copy_evt, done_evt, thread[4];
++    BOOL ready, failed;
++    struct cinecore_pbo p[10];
++    struct cinecore_dst dsts[64];
++    unsigned int dst_count;
++    LONG seq;
++    /* Parallel copy: the copy of one buffer is split in stripes over the copy threads. */
++    struct cinecore_pbo *job; volatile LONG stripes_left; HANDLE stripe_evt[8], stripe_done; unsigned int stripes;
++} cinecore;
++
++static struct cinecore_dst *cinecore_find_dst(void *dst, BOOL create)
++{
++    unsigned int i;
++    for (i = 0; i < cinecore.dst_count; ++i)
++        if (cinecore.dsts[i].dst == dst) return &cinecore.dsts[i];
++    if (!create || cinecore.dst_count == ARRAY_SIZE(cinecore.dsts)) return NULL;
++    cinecore.dsts[cinecore.dst_count].dst = dst;
++    return &cinecore.dsts[cinecore.dst_count++];
++}
++
++static void cinecore_mark_done(void *dst, LONG seq)
++{
++    struct cinecore_dst *d;
++
++    EnterCriticalSection(&cinecore.cs);
++    if ((d = cinecore_find_dst(dst, FALSE)) && d->done < seq) InterlockedExchange(&d->done, seq);
++    LeaveCriticalSection(&cinecore.cs);
++    SetEvent(cinecore.done_evt);
++}
++
++static DWORD WINAPI cinecore_stripe_proc(void *arg)
++{
++    unsigned int idx = (unsigned int)(ULONG_PTR)arg, n = cinecore.stripes;
++
++    for (;;)
++    {
++        struct cinecore_pbo *b;
++        GLsizeiptr start, end;
++
++        WaitForSingleObject(cinecore.stripe_evt[idx], INFINITE);
++        b = cinecore.job;
++        start = b->size / n * idx;
++        end = idx == n - 1 ? b->size : b->size / n * (idx + 1);
++        memcpy((uint8_t *)b->dst + start, (uint8_t *)b->map + start, end - start);
++        if (!InterlockedDecrement(&cinecore.stripes_left)) SetEvent(cinecore.stripe_done);
++    }
++    return 0;
++}
++
++static DWORD WINAPI cinecore_copy_proc(void *arg)
++{
++    unsigned int i, j;
++
++    for (;;)
++    {
++        WaitForSingleObject(cinecore.copy_evt, INFINITE);
++        for (i = 0; i < ARRAY_SIZE(cinecore.p); ++i)
++        {
++            struct cinecore_pbo *b = &cinecore.p[i];
++            if (b->state != CC_MAPPED) continue;
++            LARGE_INTEGER t0, t1, f;
++            QueryPerformanceCounter(&t0);
++            cinecore.job = b;
++            cinecore.stripes_left = cinecore.stripes;
++            for (j = 0; j < cinecore.stripes; ++j) SetEvent(cinecore.stripe_evt[j]);
++            WaitForSingleObject(cinecore.stripe_done, INFINITE);
++            QueryPerformanceCounter(&t1); QueryPerformanceFrequency(&f);
++            cinecore_copy_us += (t1.QuadPart - t0.QuadPart) * 1000000 / f.QuadPart;
++            if (!(++cinecore_copies % 120))
++            {
++                MESSAGE("Cinecore: 120 copie, copia media %u us, mappa media %u us, lettura media %u us.\n",
++                        (unsigned)(cinecore_copy_us / 120), (unsigned)(cinecore_map_us / 120), (unsigned)(cinecore_read_us / 120));
++                cinecore_copy_us = cinecore_map_us = cinecore_read_us = 0;
++            }
++            InterlockedExchange(&b->state, CC_COPIED);
++            cinecore_mark_done(b->dst, b->seq); /* data is in place; the CS thread unmaps later */
++        }
++    }
++    return 0;
++}
++
++static BOOL cinecore_init(struct wined3d_context_gl *context_gl)
++{
++    const struct wined3d_gl_info *gl_info = context_gl->gl_info;
++    unsigned int i;
++    HANDLE t;
++
++    if (cinecore.ready) return TRUE;
++    if (cinecore.failed) return FALSE;
++    cinecore.failed = TRUE;
++    if (!gl_info->supported[ARB_SYNC] || !gl_info->supported[ARB_PIXEL_BUFFER_OBJECT]
++            || !gl_info->supported[ARB_MAP_BUFFER_RANGE])
++        return FALSE;
++    InitializeCriticalSection(&cinecore.cs);
++    cinecore.copy_evt = CreateEventW(NULL, FALSE, FALSE, NULL);
++    cinecore.done_evt = CreateEventW(NULL, FALSE, FALSE, NULL);
++    cinecore.stripe_done = CreateEventW(NULL, FALSE, FALSE, NULL);
++    for (i = 0; i < ARRAY_SIZE(cinecore.p); ++i) GL_EXTCALL(glGenBuffers(1, &cinecore.p[i].pbo));
++    {
++        char v[8] = {0};
++        cinecore.stripes = GetEnvironmentVariableA("CINECORE_COPY_THREADS", v, sizeof(v)) ? atoi(v) : 2;
++        if (cinecore.stripes < 1 || cinecore.stripes > ARRAY_SIZE(cinecore.stripe_evt)) cinecore.stripes = 2;
++    }
++    for (i = 0; i < cinecore.stripes; ++i)
++    {
++        cinecore.stripe_evt[i] = CreateEventW(NULL, FALSE, FALSE, NULL);
++        if (!(t = CreateThread(NULL, 0, cinecore_stripe_proc, (void *)(ULONG_PTR)i, 0, NULL))) return FALSE;
++        CloseHandle(t);
++    }
++    if (!(cinecore.thread[0] = CreateThread(NULL, 0, cinecore_copy_proc, NULL, 0, NULL)))
++        return FALSE;
++    SetThreadPriority(cinecore.thread[0], THREAD_PRIORITY_ABOVE_NORMAL);
++    cinecore.failed = FALSE;
++    cinecore.ready = TRUE;
++    MESSAGE("Cinecore: asynchronous texture downloads enabled.\n");
++    return TRUE;
++}
++
++/* CS thread: unmap copied buffers, map signalled ones. Never waits. */
++static void cinecore_collect(const struct wined3d_gl_info *gl_info)
++{
++    BOOL kick = FALSE, bound = FALSE;
++    unsigned int i;
++
++    for (i = 0; i < ARRAY_SIZE(cinecore.p); ++i)
++    {
++        struct cinecore_pbo *b = &cinecore.p[i];
++        if (b->state == CC_COPIED)
++        {
++            GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, b->pbo)); bound = TRUE;
++            GL_EXTCALL(glUnmapBuffer(GL_PIXEL_PACK_BUFFER));
++            b->map = NULL;
++            InterlockedExchange(&b->state, CC_FREE);
++        }
++        else if (b->state == CC_READING)
++        {
++            GLenum r = GL_EXTCALL(glClientWaitSync(b->fence, GL_SYNC_FLUSH_COMMANDS_BIT, 0));
++            if (r != GL_ALREADY_SIGNALED && r != GL_CONDITION_SATISFIED) continue;
++            GL_EXTCALL(glDeleteSync(b->fence));
++            b->fence = NULL;
++            GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, b->pbo)); bound = TRUE;
++            {
++                LARGE_INTEGER t0, t1, f;
++                QueryPerformanceCounter(&t0);
++                b->map = GL_EXTCALL(glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, b->size, GL_MAP_READ_BIT));
++                QueryPerformanceCounter(&t1); QueryPerformanceFrequency(&f);
++                cinecore_map_us += (t1.QuadPart - t0.QuadPart) * 1000000 / f.QuadPart;
++            }
++            if (!b->map)
++            {
++                InterlockedExchange(&b->state, CC_FREE);
++                cinecore_mark_done(b->dst, b->seq);
++                continue;
++            }
++            InterlockedExchange(&b->state, CC_MAPPED);
++            kick = TRUE;
++        }
++    }
++    if (bound) GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
++    if (kick) SetEvent(cinecore.copy_evt);
++}
++
++static BOOL cinecore_async_download(struct wined3d_context_gl *context_gl, struct wined3d_texture_gl *src_texture_gl,
++        unsigned int src_sub_resource_idx, unsigned int src_location, const struct wined3d_box *src_box,
++        const struct wined3d_bo_address *dst_bo_addr, const struct wined3d_format *dst_format,
++        unsigned int dst_x, unsigned int dst_y, unsigned int dst_z, unsigned int dst_row_pitch)
++{
++    const struct wined3d_gl_info *gl_info = context_gl->gl_info;
++    struct wined3d_texture *dst = cinecore_download_dst, *src = &src_texture_gl->t;
++    const struct wined3d_format_gl *format_gl = wined3d_format_gl(src->resource.format);
++    struct cinecore_pbo *b = NULL;
++    struct cinecore_dst *d;
++    GLsizeiptr size;
++    unsigned int i;
++    LONG seq;
++
++    if (!dst || !(dst->resource.usage & WINED3DUSAGE_DYNAMIC) || (dst->resource.access & WINED3D_RESOURCE_ACCESS_GPU)
++            || !dst->sub_resources[0].user_memory || dst_bo_addr->buffer_object || !dst_bo_addr->addr)
++        return FALSE;
++    if (!cinecore_init(context_gl))
++        return FALSE;
++    cinecore_collect(gl_info);
++    /* A 1x1 download is only a poll from the application (collect finished readbacks, e.g. while paused):
++     * it goes through the asynchronous path too, a synchronous one would wait for the GPU. */
++    if (src_sub_resource_idx || dst_x || dst_y || dst_z || src_box->left || src_box->top
++            || src_box->right != wined3d_texture_get_level_width(src, 0)
++            || src_box->bottom != wined3d_texture_get_level_height(src, 0)
++            || wined3d_texture_gl_get_sub_resource_target(src_texture_gl, 0) != GL_TEXTURE_2D
++            || format_gl->f.conv_byte_count || dst_format->id != src->resource.format->id
++            || dst_row_pitch != src_box->right * src->resource.format->byte_count
++            || !(src->resource.bind_flags & WINED3D_BIND_RENDER_TARGET))
++        return FALSE;
++
++    EnterCriticalSection(&cinecore.cs);
++    d = cinecore_find_dst(dst_bo_addr->addr, TRUE);
++    seq = d ? (d->queued = ++cinecore.seq) : 0;
++    LeaveCriticalSection(&cinecore.cs);
++    if (!d) return FALSE;
++    for (i = 0; i < ARRAY_SIZE(cinecore.p); ++i) if (cinecore.p[i].state == CC_FREE) { b = &cinecore.p[i]; break; }
++    if (!b)
++    {
++        /* All buffers busy: skip this frame (the application keeps the previous one). */
++        cinecore_mark_done(dst_bo_addr->addr, seq);
++        return TRUE;
++    }
++
++    size = (GLsizeiptr)dst_row_pitch * src_box->bottom;
++    wined3d_context_gl_apply_fbo_state_explicit(context_gl, GL_READ_FRAMEBUFFER, &src->resource, 0, NULL, 0, src_location);
++    gl_info->gl_ops.gl.p_glReadBuffer(GL_COLOR_ATTACHMENT0);
++    GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, b->pbo));
++    if (b->alloc != size)
++    {
++        GL_EXTCALL(glBufferData(GL_PIXEL_PACK_BUFFER, size, NULL, GL_STREAM_READ));
++        b->alloc = size;
++    }
++    {
++        LARGE_INTEGER t0, t1, f;
++        QueryPerformanceCounter(&t0);
++        gl_info->gl_ops.gl.p_glReadPixels(0, 0, src_box->right, src_box->bottom, format_gl->format, format_gl->type, NULL);
++        QueryPerformanceCounter(&t1); QueryPerformanceFrequency(&f);
++        if (src_box->right > 1) cinecore_read_us += (t1.QuadPart - t0.QuadPart) * 1000000 / f.QuadPart;
++    }
++    GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
++    b->fence = GL_EXTCALL(glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0));
++    gl_info->gl_ops.gl.p_glFlush(); /* the fence must reach the GPU, nothing else may flush for a while */
++    checkGLcall("Cinecore asynchronous readback");
++    b->dst = dst_bo_addr->addr; b->seq = seq; b->size = size;
++    InterlockedExchange(&b->state, CC_READING);
++    return TRUE;
++}
++
++/* Returns TRUE once the last asynchronous download into dst has completed (or none was queued). */
++BOOL CDECL cinecore_download_wait(void *dst, DWORD timeout_ms)
++{
++    struct cinecore_dst *d;
++    DWORD start = GetTickCount();
++
++    if (!cinecore.ready) return TRUE;
++    EnterCriticalSection(&cinecore.cs);
++    d = cinecore_find_dst(dst, FALSE);
++    LeaveCriticalSection(&cinecore.cs);
++    if (!d) return TRUE;
++    while (d->done < d->queued)
++    {
++        if (cinecore.failed || GetTickCount() - start >= timeout_ms) return FALSE;
++        WaitForSingleObject(cinecore.done_evt, 1);
++    }
++    return TRUE;
++}
++
+ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
+         struct wined3d_texture *src_texture, unsigned int src_sub_resource_idx, unsigned int src_location,
+         const struct wined3d_box *src_box, const struct wined3d_bo_address *dst_bo_addr,
+@@ -1901,6 +2168,10 @@
+             debug_box(src_box), debug_bo_address(dst_bo_addr), debug_d3dformat(dst_format->id),
+             dst_x, dst_y, dst_z, dst_row_pitch, dst_slice_pitch);
+ 
++    if (cinecore_download_dst && cinecore_async_download(context_gl, src_texture_gl, src_sub_resource_idx, src_location,
++            src_box, dst_bo_addr, dst_format, dst_x, dst_y, dst_z, dst_row_pitch))
++        return;
++
+     if (src_location == WINED3D_LOCATION_TEXTURE_SRGB)
+     {
+         srgb = true;
+--- a/dlls/wined3d/wined3d.spec
++++ b/dlls/wined3d/wined3d.spec
+@@ -406,3 +406,5 @@
+ @ cdecl vkd3d_shader_scan(ptr ptr)
+ @ cdecl vkd3d_shader_serialize_dxbc(long ptr ptr ptr)
+ @ cdecl vkd3d_shader_serialize_root_signature(ptr ptr ptr)
++
++@ cdecl cinecore_download_wait(ptr long)

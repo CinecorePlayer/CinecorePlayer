@@ -1,0 +1,33 @@
+--- a/dlls/wined3d/texture_gl.c	2026-11-19 08:15:55
++++ b/dlls/wined3d/texture_gl.c	2026-11-19 11:53:22
+@@ -2205,10 +2205,29 @@
+                 for (j = ARRAY_SIZE(cinecore.p) / 2; j < ARRAY_SIZE(cinecore.p); ++j)
+                 {
+                     struct cinecore_pbo *o = &cinecore.p[j];
++                    GLenum r;
+                     if (o == b || o->state != CC_READING || !o->surface || !o->fence) continue;
+-                    GL_EXTCALL(glClientWaitSync(o->fence, GL_SYNC_FLUSH_COMMANDS_BIT, (GLuint64)500000000));
++                    r = GL_EXTCALL(glClientWaitSync(o->fence, GL_SYNC_FLUSH_COMMANDS_BIT, (GLuint64)500000000));
++                    /* Cinecore: the slot is published only when the GPU really finished writing it. On timeout it stays
++                     * "reading" (cinecore_collect picks it up later); on failure the frame is marked failed, so the
++                     * consumer keeps the previous one instead of reading a surface that may still be written. */
++                    if (r == GL_TIMEOUT_EXPIRED)
++                    {
++                        static int timeouts;
++                        if (timeouts++ < 5) ERR("Cinecore: IOSurface fence still pending after 500 ms, slot kept.\n");
++                        continue;
++                    }
+                     GL_EXTCALL(glDeleteSync(o->fence));
+                     o->fence = NULL;
++                    if (r != GL_ALREADY_SIGNALED && r != GL_CONDITION_SATISFIED)
++                    {
++                        struct cinecore_dst *fd;
++                        static int failures;
++                        if (failures++ < 5) ERR("Cinecore: IOSurface fence wait failed (%#x), frame dropped.\n", r);
++                        EnterCriticalSection(&cinecore.cs);
++                        if ((fd = cinecore_find_dst(o->dst, FALSE))) InterlockedExchange(&fd->failed, o->seq);
++                        LeaveCriticalSection(&cinecore.cs);
++                    }
+                     InterlockedExchange(&o->state, CC_FREE);
+                     cinecore_mark_done(o->dst, o->seq);
+                 }

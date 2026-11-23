@@ -1,0 +1,59 @@
+diff --git a/dlls/winemac.drv/cocoa_main.m b/dlls/winemac.drv/cocoa_main.m
+index e80aa93..bde5af5 100644
+--- a/dlls/winemac.drv/cocoa_main.m
++++ b/dlls/winemac.drv/cocoa_main.m
+@@ -110,8 +110,54 @@ static void run_cocoa_app(void* info)
+  *
+  * Returns 0 on success, non-zero on failure.
+  */
++#include <dlfcn.h>
++#include <objc/objc-exception.h>
++/* Cinecore: lo stack si scrive anche al LANCIO dell'eccezione (preprocessore Objective-C, installato al caricamento della
++   libreria): il gestore delle non intercettate viene rimpiazzato da AppKit e lo stack arrivava vuoto. */
++static objc_exception_preprocessor cinecore_previous_preprocessor;
++static id cinecore_exception_preprocessor(id object)
++{
++    @autoreleasepool
++    {
++        NSException *e = object;
++        if ([e isKindOfClass:[NSException class]] && [[e name] isEqualToString:NSInvalidArgumentException])
++        {
++            fprintf(stderr, "cinecore: eccezione lanciata %s: %s\n", [[e name] UTF8String], [[e reason] UTF8String]);
++            for (NSString *line in [NSThread callStackSymbols]) fprintf(stderr, "cinecore:   %s\n", [line UTF8String]);
++            fflush(stderr);
++        }
++    }
++    return cinecore_previous_preprocessor ? cinecore_previous_preprocessor(object) : object;
++}
++__attribute__((constructor)) static void cinecore_install_exception_preprocessor(void)
++{
++    cinecore_previous_preprocessor = objc_setExceptionPreprocessor(cinecore_exception_preprocessor);
++}
++/* Cinecore: un'eccezione Objective-C non intercettata chiude il processo con "First throw call stack: ()" vuoto.
++   Qui si scrivono nome, motivo e indirizzi con modulo e simbolo (dladdr), per trovare chi la lancia. */
++static void cinecore_uncaught_exception(NSException *exception)
++{
++    NSArray *addresses = [exception callStackReturnAddresses];
++    fprintf(stderr, "cinecore: eccezione %s: %s\n", [[exception name] UTF8String], [[exception reason] UTF8String]);
++    for (NSNumber *n in addresses)
++    {
++        Dl_info info;
++        void *addr = (void *)[n unsignedLongValue];
++        if (dladdr(addr, &info) && info.dli_fname)
++        {
++            const char *slash = strrchr(info.dli_fname, '/');
++            fprintf(stderr, "cinecore:   %s+0x%lx %s+0x%lx\n", slash ? slash + 1 : info.dli_fname,
++                    (unsigned long)((char *)addr - (char *)info.dli_fbase), info.dli_sname ? info.dli_sname : "?",
++                    info.dli_saddr ? (unsigned long)((char *)addr - (char *)info.dli_saddr) : 0UL);
++        }
++        else fprintf(stderr, "cinecore:   %p\n", addr);
++    }
++    fflush(stderr);
++}
++
+ int macdrv_start_cocoa_app(unsigned long long tickcount)
+ {
++    NSSetUncaughtExceptionHandler(&cinecore_uncaught_exception);
+ @autoreleasepool
+ {
+     int ret = -1;

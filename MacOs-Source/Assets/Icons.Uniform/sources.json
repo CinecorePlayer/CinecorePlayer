@@ -1,0 +1,337 @@
+{
+  "computer": {
+    "retained": true,
+    "source": "https://raw.githubusercontent.com/google/material-design-icons/master/symbols/web/computer/materialsymbolsrounded/computer_wght200_24px.svg",
+    "sha256": "99f5ad24354bd6c6fe550b54e91992206a65a141f506d6242a187cf905726597"
+  },
+  "network": {
+    "retained": true,
+    "source": "https://raw.githubusercontent.com/google/material-design-icons/master/symbols/web/lan/materialsymbolsrounded/lan_wght200_24px.svg",
+    "sha256": "fff9acc8da982b72d621525ad773903d45dd7882133d9749b2b2d53bf7e1c734"
+  },
+  "link": {
+    "retained": true,
+    "source": "https://raw.githubusercontent.com/google/material-design-icons/master/symbols/web/link/materialsymbolsrounded/link_wght200_24px.svg",
+    "sha256": "ffbb73427b9b8739e3da119347e5837ca99d25851cca8210b61ba77d8dea08de"
+  },
+  "time": {
+    "retained": true,
+    "source": "https://raw.githubusercontent.com/google/material-design-icons/master/symbols/web/schedule/materialsymbolsrounded/schedule_wght200_24px.svg",
+    "sha256": "12d3866b78d448dac806aa72a4a58a900b75a97fa2263d52080a19b982b75aa8"
+  },
+  "home": {
+    "source": "Assets\\hud_icons\\home.svg",
+    "restored": true
+  },
+  "movie": {
+    "source": "Assets\\hud_icons\\movie.svg",
+    "restored": true
+  },
+  "tv": {
+    "source": "Assets\\hud_icons\\tv.svg",
+    "restored": true
+  },
+  "music": {
+    "source": "Assets\\hud_icons\\music.svg",
+    "restored": true
+  },
+  "photo": {
+    "source": "Assets\\hud_icons\\photo.svg",
+    "restored": true
+  },
+  "star": {
+    "source": "Assets\\hud_icons\\star.svg",
+    "restored": true
+  },
+  "playlist": {
+    "source": "Assets\\hud_icons\\playlist.svg",
+    "restored": true
+  },
+  "youtube": {
+    "source": "Assets\\hud_icons\\youtube.svg",
+    "restored": true
+  },
+  "cloud": {
+    "source": "Assets\\hud_icons\\cloud.svg",
+    "restored": true
+  },
+  "storage": {
+    "source": "Assets\\hud_icons\\storage.svg",
+    "restored": true
+  },
+  "settings": {
+    "source": "Assets\\hud_icons\\settings.svg",
+    "restored": true
+  },
+  "add": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/plus.svg",
+    "strokeWidth": 1.5
+  },
+  "back": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/arrow-back-up.svg",
+    "strokeWidth": 1.5
+  },
+  "balance": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/arrows-left-right.svg",
+    "strokeWidth": 1.5
+  },
+  "calendar": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/calendar.svg",
+    "strokeWidth": 1.5
+  },
+  "chapters": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/list-numbers.svg",
+    "strokeWidth": 1.5
+  },
+  "check": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/check.svg",
+    "strokeWidth": 1.5
+  },
+  "chevron-down": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/chevron-down.svg",
+    "strokeWidth": 1.5
+  },
+  "chevron-right": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/chevron-right.svg",
+    "strokeWidth": 1.5
+  },
+  "clipboard": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/clipboard.svg",
+    "strokeWidth": 1.5
+  },
+  "close": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/x.svg",
+    "strokeWidth": 1.5
+  },
+  "cube": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/cube.svg",
+    "strokeWidth": 1.5
+  },
+  "dot": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/point.svg",
+    "strokeWidth": 1.5
+  },
+  "edit": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/pencil.svg",
+    "strokeWidth": 1.5
+  },
+  "eject": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/player-eject.svg",
+    "strokeWidth": 1.5
+  },
+  "exit": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/logout.svg",
+    "strokeWidth": 1.5
+  },
+  "filter": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/filter.svg",
+    "strokeWidth": 1.5
+  },
+  "folder-plus": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/folder-plus.svg",
+    "strokeWidth": 1.5
+  },
+  "folder": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/folder.svg",
+    "strokeWidth": 1.5
+  },
+  "grid": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/layout-grid.svg",
+    "strokeWidth": 1.5
+  },
+  "image-add": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/photo-plus.svg",
+    "strokeWidth": 1.5
+  },
+  "info": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/info-circle.svg",
+    "strokeWidth": 1.5
+  },
+  "key": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/key.svg",
+    "strokeWidth": 1.5
+  },
+  "keyboard": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/keyboard.svg",
+    "strokeWidth": 1.5
+  },
+  "language": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/language.svg",
+    "strokeWidth": 1.5
+  },
+  "levels": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/chart-bar.svg",
+    "strokeWidth": 1.5
+  },
+  "library": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/books.svg",
+    "strokeWidth": 1.5
+  },
+  "list": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/list.svg",
+    "strokeWidth": 1.5
+  },
+  "loudness": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/gauge.svg",
+    "strokeWidth": 1.5
+  },
+  "maximize": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/maximize.svg",
+    "strokeWidth": 1.5
+  },
+  "moon": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/moon.svg",
+    "strokeWidth": 1.5
+  },
+  "more": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/dots.svg",
+    "strokeWidth": 1.5
+  },
+  "mute": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/volume-off.svg",
+    "strokeWidth": 1.5
+  },
+  "next": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/player-track-next.svg",
+    "strokeWidth": 1.5
+  },
+  "palette": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/palette.svg",
+    "strokeWidth": 1.5
+  },
+  "pause": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/player-pause.svg",
+    "strokeWidth": 1.5
+  },
+  "person": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/user.svg",
+    "strokeWidth": 1.5
+  },
+  "phase": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/circle-plus.svg",
+    "strokeWidth": 1.5
+  },
+  "pip": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/picture-in-picture.svg",
+    "strokeWidth": 1.5
+  },
+  "play": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/player-play.svg",
+    "strokeWidth": 1.5
+  },
+  "power": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/power.svg",
+    "strokeWidth": 1.5
+  },
+  "previous": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/player-track-prev.svg",
+    "strokeWidth": 1.5
+  },
+  "quality": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/badge-hd.svg",
+    "strokeWidth": 1.5
+  },
+  "queue-add": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/playlist-add.svg",
+    "strokeWidth": 1.5
+  },
+  "queue": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/list-details.svg",
+    "strokeWidth": 1.5
+  },
+  "remote": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/device-remote.svg",
+    "strokeWidth": 1.5
+  },
+  "repeat-one": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/repeat-once.svg",
+    "strokeWidth": 1.5
+  },
+  "reset": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/restore.svg",
+    "strokeWidth": 1.5
+  },
+  "scan": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/refresh.svg",
+    "strokeWidth": 1.5
+  },
+  "search": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/search.svg",
+    "strokeWidth": 1.5
+  },
+  "shuffle": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/arrows-shuffle.svg",
+    "strokeWidth": 1.5
+  },
+  "skip-back": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/player-skip-back.svg",
+    "strokeWidth": 1.5
+  },
+  "skip-forward": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/player-skip-forward.svg",
+    "strokeWidth": 1.5
+  },
+  "sort": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/arrows-sort.svg",
+    "strokeWidth": 1.5
+  },
+  "spectrum": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/chart-area-line.svg",
+    "strokeWidth": 1.5
+  },
+  "spotlight": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/sparkles.svg",
+    "strokeWidth": 1.5
+  },
+  "stop": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/player-stop.svg",
+    "strokeWidth": 1.5
+  },
+  "subtitles": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/subtitles.svg",
+    "strokeWidth": 1.5
+  },
+  "sun": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/sun.svg",
+    "strokeWidth": 1.5
+  },
+  "tag": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/tag.svg",
+    "strokeWidth": 1.5
+  },
+  "trash": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/trash.svg",
+    "strokeWidth": 1.5
+  },
+  "volume-high": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/volume.svg",
+    "strokeWidth": 1.5
+  },
+  "volume-low": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/volume-2.svg",
+    "strokeWidth": 1.5
+  },
+  "volume": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/volume.svg",
+    "strokeWidth": 1.5
+  },
+  "wave": {
+    "source": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/wave-sine.svg",
+    "strokeWidth": 1.5
+  },
+  "audio": {
+    "alias": "wave"
+  },
+  "cinema": {
+    "alias": "movie"
+  },
+  "heart": {
+    "alias": "star"
+  },
+  "home-2": {
+    "alias": "home"
+  },
+  "playlist-add": {
+    "alias": "playlist"
+  }
+}

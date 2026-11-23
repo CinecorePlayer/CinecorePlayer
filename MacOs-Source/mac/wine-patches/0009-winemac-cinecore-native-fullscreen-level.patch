@@ -1,0 +1,38 @@
+--- a/dlls/winemac.drv/cocoa_window.m
++++ b/dlls/winemac.drv/cocoa_window.m
+@@ -268,6 +268,7 @@
+ @property (readwrite, nonatomic) BOOL preventsAppActivation;
+ @property (readwrite, nonatomic) BOOL floating;
+ @property (readwrite, nonatomic) BOOL drawnSinceShown;
++@property (nonatomic) BOOL cinecoreVideoBehind;
+ @property (readwrite, nonatomic) BOOL closing;
+ @property (readwrite, getter=isFakingClose, nonatomic) BOOL fakingClose;
+ @property (retain, nonatomic) NSWindow* latentParentWindow;
+@@ -1105,9 +1106,9 @@
+ 
+     - (NSInteger) minimumLevelForActive:(BOOL)active
+     {
+-        /* The native Cinecore window owns focus and z-order, including fullscreen. */
++        /* Keep the video below the HUD when both windows are in the native fullscreen Space. */
+         if ([[self title] isEqualToString:@"Cinecore Video"])
+-            return NSNormalWindowLevel;
++            return NSNormalWindowLevel - (self.cinecoreVideoBehind ? 1 : 0);
+         NSInteger level;
+ 
+         if (self.floating && (active || topmost_float_inactive == TOPMOST_FLOAT_INACTIVE_ALL ||
+@@ -3192,8 +3193,14 @@
+         {
+             NSInteger owner = [[titleString substringFromIndex:[ownerPrefix length]] integerValue];
+             /* Place the renderer directly behind the native HUD, without activating Wine. */
+-            if (owner > 0 && [window isOrderedIn])
++            BOOL transitioning = [titleString hasSuffix:@":transition"];
++            window.cinecoreVideoBehind = transitioning || [titleString hasSuffix:@":fullscreen"];
++            if (transitioning) [window setAlphaValue:0];
++            NSInteger level = [window minimumLevelForActive:[NSApp isActive]];
++            if ([window level] != level) [window setLevel:level];
++            if (!window.cinecoreVideoBehind && owner > 0 && [window isOrderedIn])
+                 [window orderWindow:NSWindowBelow relativeTo:owner];
++            if (!transitioning && [window alphaValue] != 1) [window setAlphaValue:1];
+             return;
+         }
+ 

@@ -1,0 +1,537 @@
+mpv v0.42.0: CoreAudio IEC 61937 for Dolby Digital Plus and TrueHD (mpv pull request #18801, HDMI formats measured on SR7010), plus IEC 61937 inside integer LPCM (coreaudio-spdif-hack) for every passthrough format on HDMI sinks whose EDID lists only LPCM.
+
+--- a/audio/format.h
++++ b/audio/format.h
+@@ -45,8 +45,10 @@
+     AF_FORMAT_S_DTS,
+     AF_FORMAT_S_DTSHD,
+     AF_FORMAT_S_EAC3,
++    AF_FORMAT_S_EAC3_ATMOS,
+     AF_FORMAT_S_MP3,
+     AF_FORMAT_S_TRUEHD,
++    AF_FORMAT_S_TRUEHD_ATMOS,
+ 
+     // DSD-over-PCM (DoP): 16 DSD bits and a marker byte in the 24 MSBs of
+     // 32-bit samples.
+--- a/audio/format.c
++++ b/audio/format.c
+@@ -140,8 +140,10 @@
+     case AF_FORMAT_S_DTS:       return "spdif-dts";
+     case AF_FORMAT_S_DTSHD:     return "spdif-dtshd";
+     case AF_FORMAT_S_EAC3:      return "spdif-eac3";
++    case AF_FORMAT_S_EAC3_ATMOS: return "spdif-eac3-atmos";
+     case AF_FORMAT_S_MP3:       return "spdif-mp3";
+     case AF_FORMAT_S_TRUEHD:    return "spdif-truehd";
++    case AF_FORMAT_S_TRUEHD_ATMOS: return "spdif-truehd-atmos";
+     case AF_FORMAT_S_DOP:       return "dop";
+     case AF_FORMAT_DSD:         return "dsd";
+     }
+@@ -280,8 +282,10 @@
+     case AF_FORMAT_S_AC3:       return 6144 / 4;
+     case AF_FORMAT_S_DTSHD:     return 32768 / 16;
+     case AF_FORMAT_S_DTS:       return 2048 / 4;
++    case AF_FORMAT_S_EAC3_ATMOS:
+     case AF_FORMAT_S_EAC3:      return 24576 / 4;
+     case AF_FORMAT_S_MP3:       return 4608 / 4;
++    case AF_FORMAT_S_TRUEHD_ATMOS:
+     case AF_FORMAT_S_TRUEHD:    return 61440 / 16;
+     default:                    return 1;
+     }
+--- a/audio/decode/ad_spdif.c
++++ b/audio/decode/ad_spdif.c
+@@ -28,6 +28,7 @@
+ #include "audio/aframe.h"
+ #include "audio/chmap_avchannel.h"
+ #include "audio/format.h"
++#include "config.h"
+ #include "common/av_common.h"
+ #include "common/codecs.h"
+ #include "common/msg.h"
+@@ -305,7 +306,8 @@
+         break;
+     }
+     case AV_CODEC_ID_EAC3:
+-        sample_format                   = AF_FORMAT_S_EAC3;
++        sample_format = HAVE_COREAUDIO && profile == AV_PROFILE_EAC3_DDP_ATMOS
++                       ? AF_FORMAT_S_EAC3_ATMOS : AF_FORMAT_S_EAC3;
+         samplerate                      = 192000;
+         num_channels                    = 2;
+         break;
+@@ -315,7 +317,8 @@
+         num_channels                    = 2;
+         break;
+     case AV_CODEC_ID_TRUEHD:
+-        sample_format                   = AF_FORMAT_S_TRUEHD;
++        sample_format = HAVE_COREAUDIO && profile == AV_PROFILE_TRUEHD_ATMOS
++                       ? AF_FORMAT_S_TRUEHD_ATMOS : AF_FORMAT_S_TRUEHD;
+         samplerate                      = 192000;
+         num_channels                    = 8;
+         break;
+--- a/audio/out/ao_coreaudio_utils.h
++++ b/audio/out/ao_coreaudio_utils.h
+@@ -21,6 +21,12 @@
+ 
+ #include <AudioToolbox/AudioToolbox.h>
+ #include <inttypes.h>
++
++// Format IDs measured on macOS HDMI outputs, outside the public SDK.
++#define CA_DOLBY_PLUS       'cec3'
++#define CA_DOLBY_PLUS_ATMOS 'cc+3'
++#define CA_TRUEHD           'mtct'
++#define CA_TRUEHD_ATMOS     'mtc+'
+ #include <stdbool.h>
+ 
+ #include "config.h"
+--- a/audio/out/ao_coreaudio_utils.c
++++ b/audio/out/ao_coreaudio_utils.c
+@@ -148,10 +148,19 @@
+                              int samplerate, int num_channels)
+ {
+     asbd->mSampleRate       = samplerate;
+-    // Set "AC3" for other spdif formats too - unknown if that works.
+-    asbd->mFormatID         = af_fmt_is_spdif(mp_format) ?
+-                              kAudioFormat60958AC3 :
+-                              kAudioFormatLinearPCM;
++    asbd->mFormatID = kAudioFormatLinearPCM;
++    if (af_fmt_is_spdif(mp_format)) {
++        switch (mp_format) {
++        case AF_FORMAT_S_EAC3: asbd->mFormatID = CA_DOLBY_PLUS; break;
++        case AF_FORMAT_S_EAC3_ATMOS: asbd->mFormatID = CA_DOLBY_PLUS_ATMOS; break;
++        case AF_FORMAT_S_TRUEHD: asbd->mFormatID = CA_TRUEHD; break;
++        case AF_FORMAT_S_TRUEHD_ATMOS: asbd->mFormatID = CA_TRUEHD_ATMOS; break;
++        default: asbd->mFormatID = kAudioFormat60958AC3; break;
++        }
++        // CoreAudio represents the IEC 61937 byte rate as a stereo carrier.
++        asbd->mSampleRate = (double)samplerate * num_channels / 2;
++        num_channels = 2;
++    }
+     asbd->mChannelsPerFrame = num_channels;
+     asbd->mBitsPerChannel   = af_fmt_to_bytes(mp_format) * 8;
+     asbd->mFormatFlags      = kAudioFormatFlagIsPacked;
+@@ -189,14 +198,35 @@
+     case 'iac3':
+     case  kAudioFormat60958AC3:
+     case  kAudioFormatAC3:
++    case CA_DOLBY_PLUS:
++    case CA_DOLBY_PLUS_ATMOS:
++    case 'cd+3':
++    case CA_TRUEHD:
++    case CA_TRUEHD_ATMOS:
++    case 'mtat':
++    case 'mtbt':
++    case 'mtb+':
+         return true;
+     return false;
+ }
+ 
+-// This might be wrong, but for now it's sufficient for us.
+ static uint32_t ca_normalize_formatid(uint32_t formatID)
+ {
+-    return ca_formatid_is_compressed(formatID) ? kAudioFormat60958AC3 : formatID;
++    switch (formatID) {
++    case 'IAC3':
++    case 'iac3':
++    case kAudioFormatAC3:
++        return kAudioFormat60958AC3;
++    case 'cd+3':
++        return CA_DOLBY_PLUS_ATMOS;
++    case 'mtat':
++    case 'mtbt':
++        return CA_TRUEHD;
++    case 'mtb+':
++        return CA_TRUEHD_ATMOS;
++    default:
++        return formatID;
++    }
+ }
+ 
+ bool ca_asbd_equals(const AudioStreamBasicDescription *a,
+--- a/audio/out/ao_coreaudio_exclusive.c
++++ b/audio/out/ao_coreaudio_exclusive.c
+@@ -76,8 +76,15 @@
+     AudioStreamBasicDescription stream_asbd;
+     AudioStreamBasicDescription original_asbd;
+ 
+-    // Output s16 physical format, float32 virtual format, ac3/dts mpv format
++    // IEC 61937 inside an integer LPCM stream, for HDMI sinks whose EDID only
++    // lists LPCM (the receiver detects the bursts). Any spdif format.
+     bool spdif_hack;
++    bool carrier;
++    // How the virtual format stores one 16-bit IEC word.
++    int out_bytes;      // 2, 3 or 4 bytes per sample
++    int out_shift;
++    bool out_float;     // float32 (HAL converts back to the integer physical format)
++    bool out_silent;    // test knob: write zeros (CINECORE_CA_SILENT=1)
+ 
+     bool changed_mixing;
+ 
+@@ -171,7 +178,7 @@
+     struct priv *p   = ao->priv;
+     AudioBuffer buf  = out_data->mBuffers[p->stream_idx];
+     int requested    = buf.mDataByteSize;
+-    int sstride      = p->spdif_hack ? 4 * ao->channels.num : ao->sstride;
++    int sstride      = p->carrier ? p->out_bytes * ao->channels.num : ao->sstride;
+ 
+     int pseudo_frames = requested / sstride;
+ 
+@@ -187,8 +194,27 @@
+ 
+     ao_read_data(ao, &buf.mData, pseudo_frames, end, NULL, true, true);
+ 
+-    if (p->spdif_hack)
+-        bad_hack_mygodwhy(buf.mData, pseudo_frames * ao->channels.num);
++    if (p->carrier) {
++        int samples = pseudo_frames * ao->channels.num;
++        char *d = buf.mData;
++        if (p->out_silent)
++            memset(d, 0, samples * 2);
++        if (p->out_float) {
++            bad_hack_mygodwhy(d, samples);
++        } else if (p->out_bytes == 4) {
++            // 24 or 32 significant bits aligned low in 32: the word goes in the top 16 of the
++            // significant bits, zero below (IEC 60958 audio word with 16-bit data).
++            for (int n = samples - 1; n >= 0; n--)
++                AV_WN32(d + n * 4, (uint32_t)(int32_t)(int16_t)AV_RN16(d + n * 2) << p->out_shift);
++        } else if (p->out_bytes == 3) {
++            for (int n = samples - 1; n >= 0; n--) {
++                uint16_t v = AV_RN16(d + n * 2);
++                d[n * 3 + 2] = v >> 8;
++                d[n * 3 + 1] = v & 0xff;
++                d[n * 3 + 0] = 0;
++            }
++        }
++    }
+ 
+     return noErr;
+ }
+@@ -198,86 +224,100 @@
+ // one that fulfills some minimum requirements.
+ // If this is not sufficient, we could duplicate the device list entries for
+ // each sub-stream, and make it explicit.
+-static int select_stream(struct ao *ao)
++static bool matches_passthrough(const AudioStreamBasicDescription *req,
++                                const AudioStreamBasicDescription *actual)
+ {
++    return ca_asbd_equals(req, actual) &&
++           req->mChannelsPerFrame == actual->mChannelsPerFrame &&
++           req->mBytesPerFrame == actual->mBytesPerFrame;
++}
++
++static bool find_format(struct ao *ao, AudioStreamID stream,
++                        AudioStreamBasicDescription *out_fmt)
++{
++    AudioStreamBasicDescription req = {0};
++    ca_fill_asbd(ao, &req);
++    *out_fmt = (AudioStreamBasicDescription){0};
+     struct priv *p = ao->priv;
++    bool compressed = af_fmt_is_spdif(ao->format) && !p->carrier;
++    if (p->carrier) {
++        // Exact rate and channel count of the IEC 61937 stream, signed integer LPCM,
++        // 16 bits preferred (no conversion at all), then 24/32.
++        req = (AudioStreamBasicDescription){
++            .mFormatID = kAudioFormatLinearPCM,
++            .mSampleRate = ao->samplerate,
++            .mChannelsPerFrame = ao->channels.num,
++        };
++    }
+ 
+-    AudioStreamID *streams;
+-    size_t n_streams;
+-    OSStatus err;
++    AudioStreamRangedDescription *formats;
++    size_t count;
++    OSStatus err = CA_GET_ARY(stream, kAudioStreamPropertyAvailablePhysicalFormats,
++                              &formats, &count);
++    if (err != noErr)
++        return false;
+ 
+-    /* Get a list of all the streams on this device. */
+-    err = CA_GET_ARY_O(p->device, kAudioDevicePropertyStreams,
+-                       &streams, &n_streams);
++    for (size_t i = 0; i < count; i++) {
++        AudioStreamBasicDescription *candidate = &formats[i].mFormat;
++        ca_print_asbd(ao, "- ", candidate);
++        if (p->carrier) {
++            bool usable = candidate->mFormatID == kAudioFormatLinearPCM &&
++                (candidate->mFormatFlags & kAudioFormatFlagIsSignedInteger) &&
++                !(candidate->mFormatFlags & (kAudioFormatFlagIsFloat | kAudioFormatFlagIsNonInterleaved)) &&
++                candidate->mSampleRate == req.mSampleRate &&
++                candidate->mChannelsPerFrame == req.mChannelsPerFrame &&
++                candidate->mBitsPerChannel >= 16;
++            if (usable && (!out_fmt->mFormatID ||
++                           candidate->mBitsPerChannel < out_fmt->mBitsPerChannel))
++                *out_fmt = *candidate;
++        } else if (compressed) {
++            if (matches_passthrough(&req, candidate) &&
++                (!out_fmt->mFormatID || candidate->mFormatID == req.mFormatID))
++                *out_fmt = *candidate;
++        } else if (!out_fmt->mFormatID || ca_asbd_is_better(&req, out_fmt, candidate)) {
++            *out_fmt = *candidate;
++        }
++    }
++
++    // The TrueHD-only MAT carrier also carries Atmos metadata within TrueHD.
++    if (!out_fmt->mFormatID && req.mFormatID == CA_TRUEHD_ATMOS) {
++        req.mFormatID = CA_TRUEHD;
++        for (size_t i = 0; i < count; i++) {
++            if (matches_passthrough(&req, &formats[i].mFormat)) {
++                *out_fmt = formats[i].mFormat;
++                break;
++            }
++        }
++    }
++    talloc_free(formats);
++    return out_fmt->mFormatID != 0;
++}
++
++static int select_stream(struct ao *ao, AudioStreamBasicDescription *format)
++{
++    struct priv *p = ao->priv;
++    AudioStreamID *streams;
++    size_t count;
++    OSStatus err = CA_GET_ARY_O(p->device, kAudioDevicePropertyStreams,
++                               &streams, &count);
+     CHECK_CA_ERROR("could not get number of streams");
+-    for (int i = 0; i < n_streams; i++) {
++    for (size_t i = 0; i < count; i++) {
+         uint32_t direction;
+         err = CA_GET(streams[i], kAudioStreamPropertyDirection, &direction);
+         CHECK_CA_WARN("could not get stream direction");
+-        if (err == noErr && direction != 0) {
+-            MP_VERBOSE(ao, "Substream %d is not an output stream.\n", i);
++        if (err == noErr && direction != 0)
+             continue;
+-        }
+-
+-        if (af_fmt_is_pcm(ao->format) || p->spdif_hack ||
+-            ca_stream_supports_compressed(ao, streams[i]))
+-        {
+-            MP_VERBOSE(ao, "Using substream %d/%zd.\n", i, n_streams);
++        if (find_format(ao, streams[i], format)) {
+             p->stream = streams[i];
+             p->stream_idx = i;
+             break;
+         }
+     }
+-
+     talloc_free(streams);
+-
+-    if (p->stream_idx < 0) {
+-        MP_ERR(ao, "No usable substream found.\n");
+-        goto coreaudio_error;
+-    }
+-
+-    return 0;
+-
+-coreaudio_error:
+-    return -1;
+-}
+-
+-static int find_best_format(struct ao *ao, AudioStreamBasicDescription *out_fmt)
+-{
+-    struct priv *p = ao->priv;
+-
+-    // Build ASBD for the input format
+-    AudioStreamBasicDescription asbd;
+-    ca_fill_asbd(ao, &asbd);
+-    ca_print_asbd(ao, "our format:", &asbd);
+-
+-    *out_fmt = (AudioStreamBasicDescription){0};
++    if (p->stream_idx >= 0)
++        return 0;
+ 
+-    AudioStreamRangedDescription *formats;
+-    size_t n_formats;
+-    OSStatus err;
+-
+-    err = CA_GET_ARY(p->stream, kAudioStreamPropertyAvailablePhysicalFormats,
+-                     &formats, &n_formats);
+-    CHECK_CA_ERROR("could not get number of stream formats");
+-
+-    for (int j = 0; j < n_formats; j++) {
+-        AudioStreamBasicDescription *stream_asbd = &formats[j].mFormat;
+-
+-        ca_print_asbd(ao, "- ", stream_asbd);
+-
+-        if (!out_fmt->mFormatID || ca_asbd_is_better(&asbd, out_fmt, stream_asbd))
+-            *out_fmt = *stream_asbd;
+-    }
+-
+-    talloc_free(formats);
+-
+-    if (!out_fmt->mFormatID) {
+-        MP_ERR(ao, "no format found\n");
+-        return -1;
+-    }
+-
+-    return 0;
++    MP_ERR(ao, "No output stream supports the requested audio format.\n");
+ coreaudio_error:
+     return -1;
+ }
+@@ -285,7 +325,6 @@
+ static int init(struct ao *ao)
+ {
+     struct priv *p = ao->priv;
+-    int original_format = ao->format;
+ 
+     OSStatus err = ca_select_device(ao, ao->device, &p->device);
+     CHECK_CA_ERROR_L(coreaudio_error_nounlock, "failed to select device");
+@@ -300,13 +339,12 @@
+     if (af_fmt_is_pcm(ao->format))
+         p->spdif_hack = false;
+ 
+-    if (p->spdif_hack) {
+-        if (af_fmt_to_bytes(ao->format) != 2) {
+-            MP_ERR(ao, "HD formats not supported with spdif hack.\n");
+-            goto coreaudio_error_nounlock;
+-        }
+-        // Let the pure evil begin!
+-        ao->format = AF_FORMAT_S16;
++    p->carrier = p->spdif_hack;
++    if (p->carrier) {
++        const char *silent = getenv("CINECORE_CA_SILENT");
++        p->out_silent = silent && silent[0] == '1';
++        MP_VERBOSE(ao, "IEC 61937 in LPCM: %d Hz, %d channels%s.\n", ao->samplerate,
++                   ao->channels.num, p->out_silent ? " (silent test)" : "");
+     }
+ 
+     uint32_t is_alive = 1;
+@@ -322,72 +360,79 @@
+     err = ca_disable_mixing(ao, p->device, &p->changed_mixing);
+     CHECK_CA_WARN("failed to disable mixing");
+ 
+-    if (select_stream(ao) < 0)
+-        goto coreaudio_error;
+-
+     AudioStreamBasicDescription hwfmt;
+-    if (find_best_format(ao, &hwfmt) < 0)
++    if (select_stream(ao, &hwfmt) < 0)
+         goto coreaudio_error;
+ 
+     err = CA_GET(p->stream, kAudioStreamPropertyPhysicalFormat,
+                  &p->original_asbd);
+     CHECK_CA_ERROR("could not get stream's original physical format");
+ 
+-    // Even if changing the physical format fails, we can try using the current
+-    // virtual format.
+-    ca_change_physical_format_sync(ao, p->stream, hwfmt);
+-
+-    if (!ca_init_chmap(ao, p->device))
++    bool passthrough = af_fmt_is_spdif(ao->format);
++    if (!ca_change_physical_format_sync(ao, p->stream, hwfmt) && passthrough)
+         goto coreaudio_error;
++    if (!passthrough && !ca_init_chmap(ao, p->device))
++        goto coreaudio_error;
+ 
+     err = CA_GET(p->stream, kAudioStreamPropertyVirtualFormat, &p->stream_asbd);
+     CHECK_CA_ERROR("could not get stream's virtual format");
+-
+     ca_print_asbd(ao, "virtual format", &p->stream_asbd);
+ 
+-    if (p->stream_asbd.mChannelsPerFrame > MP_NUM_CHANNELS) {
+-        MP_ERR(ao, "unsupported number of channels: %d > %d.\n",
+-               p->stream_asbd.mChannelsPerFrame, MP_NUM_CHANNELS);
+-        goto coreaudio_error;
++    if (p->carrier) {
++        const AudioStreamBasicDescription *v = &p->stream_asbd;
++        bool same_clock = v->mSampleRate == ao->samplerate &&
++                          v->mChannelsPerFrame == ao->channels.num &&
++                          v->mFormatID == kAudioFormatLinearPCM &&
++                          !(v->mFormatFlags & kAudioFormatFlagIsNonInterleaved);
++        int bytes = v->mChannelsPerFrame ? v->mBytesPerFrame / v->mChannelsPerFrame : 0;
++        p->out_float = (v->mFormatFlags & kAudioFormatFlagIsFloat) && bytes == 4;
++        p->out_bytes = bytes;
++        p->out_shift = 0;
++        if (!p->out_float && (v->mFormatFlags & kAudioFormatFlagIsSignedInteger) &&
++            v->mBitsPerChannel >= 16 && v->mBitsPerChannel <= bytes * 8) {
++            if (bytes == 4)
++                p->out_shift = (v->mFormatFlags & kAudioFormatFlagIsAlignedHigh)
++                             ? 16 : v->mBitsPerChannel - 16;
++        } else if (!p->out_float) {
++            bytes = 0;
++        }
++        if (!same_clock || !(bytes == 2 || bytes == 3 || bytes == 4) ||
++            (bytes == 3 && !(v->mFormatFlags & kAudioFormatFlagIsPacked))) {
++            MP_ERR(ao, "CoreAudio did not negotiate an integer LPCM carrier.\n");
++            goto coreaudio_error;
++        }
++        if (p->out_float && hwfmt.mBitsPerChannel > 24) {
++            MP_ERR(ao, "Float virtual format over 32-bit hardware is not bit exact.\n");
++            goto coreaudio_error;
++        }
++        MP_INFO(ao, "IEC 61937 in LPCM %d bit at %d Hz, %d channels.\n",
++                (int)hwfmt.mBitsPerChannel, ao->samplerate, ao->channels.num);
++    } else if (passthrough) {
++        // Keep the IEC burst clock and verify the negotiated format before writing.
++        if (!matches_passthrough(&hwfmt, &p->stream_asbd)) {
++            MP_ERR(ao, "CoreAudio did not negotiate a matching compressed stream.\n");
++            goto coreaudio_error;
++        }
++    } else {
++        if (p->stream_asbd.mChannelsPerFrame > MP_NUM_CHANNELS) {
++            MP_ERR(ao, "unsupported number of channels: %d > %d.\n",
++                   p->stream_asbd.mChannelsPerFrame, MP_NUM_CHANNELS);
++            goto coreaudio_error;
++        }
++        ao->format = ca_asbd_to_mp_format(&p->stream_asbd);
++        if (!ao->format || af_fmt_is_planar(ao->format) || af_fmt_is_spdif(ao->format)) {
++            MP_ERR(ao, "hardware PCM format not supported\n");
++            goto coreaudio_error;
++        }
++        ao->samplerate = p->stream_asbd.mSampleRate;
++        if (ao->channels.num != p->stream_asbd.mChannelsPerFrame)
++            ca_get_active_chmap(ao, p->device, p->stream_asbd.mChannelsPerFrame, &ao->channels);
+     }
+-
+-    int new_format = ca_asbd_to_mp_format(&p->stream_asbd);
+-
+-    // If both old and new formats are spdif, avoid changing it due to the
+-    // imperfect mapping between mp and CA formats.
+-    if (!(af_fmt_is_spdif(ao->format) && af_fmt_is_spdif(new_format)))
+-        ao->format = new_format;
+-
+-    if (!ao->format || af_fmt_is_planar(ao->format)) {
+-        MP_ERR(ao, "hardware format not supported\n");
+-        goto coreaudio_error;
+-    }
+-
+-    ao->samplerate = p->stream_asbd.mSampleRate;
+-
+-    if (ao->channels.num != p->stream_asbd.mChannelsPerFrame) {
+-        ca_get_active_chmap(ao, p->device, p->stream_asbd.mChannelsPerFrame,
+-                            &ao->channels);
+-    }
+     if (!ao->channels.num) {
+         MP_ERR(ao, "number of channels changed, and unknown channel layout!\n");
+         goto coreaudio_error;
+     }
+ 
+-    if (p->spdif_hack) {
+-        AudioStreamBasicDescription physical_format = {0};
+-        err = CA_GET(p->stream, kAudioStreamPropertyPhysicalFormat,
+-                     &physical_format);
+-        CHECK_CA_ERROR("could not get stream's physical format");
+-        int ph_format = ca_asbd_to_mp_format(&physical_format);
+-        if (ao->format != AF_FORMAT_FLOAT || ph_format != AF_FORMAT_S16) {
+-            MP_ERR(ao, "Wrong parameters for spdif hack (%d / %d)\n",
+-                   ao->format, ph_format);
+-        }
+-        ao->format = original_format; // pretend AC3 or DTS *evil laughter*
+-        MP_WARN(ao, "Using spdif passthrough hack. This could produce noise.\n");
+-    }
+-
+     p->hw_latency_ns = ca_get_device_latency_ns(ao, p->device);
+     MP_VERBOSE(ao, "base latency: %lld nanoseconds\n", p->hw_latency_ns);
+ 
+@@ -405,6 +450,10 @@
+ coreaudio_error:
+     err = enable_property_listener(ao, false);
+     CHECK_CA_WARN("can't remove format change listener");
++    if (p->original_asbd.mFormatID)
++        ca_change_physical_format_sync(ao, p->stream, p->original_asbd);
++    err = ca_enable_mixing(ao, p->device, p->changed_mixing);
++    CHECK_CA_WARN("can't re-enable mixing");
+     err = ca_unlock_device(p->device, &p->hog_pid);
+     CHECK_CA_WARN("can't release hog mode");
+ coreaudio_error_nounlock:

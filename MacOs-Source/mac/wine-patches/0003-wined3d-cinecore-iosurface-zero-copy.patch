@@ -1,0 +1,797 @@
+--- a/dlls/wined3d/texture.c
++++ b/dlls/wined3d/texture.c
+@@ -28,6 +28,9 @@
+ 
+ #define WINED3D_TEXTURE_DYNAMIC_MAP_THRESHOLD 50
+ 
++/* Cinecore: destination of the download in progress (CS thread only), see texture_gl.c. */
++struct wined3d_texture *cinecore_download_dst;
++
+ struct wined3d_texture_idx
+ {
+     struct wined3d_texture *texture;
+@@ -2047,8 +2050,10 @@
+     dst_level = dst_sub_resource_idx % dst_texture->level_count;
+     wined3d_texture_get_pitch(dst_texture, dst_level, &dst_row_pitch, &dst_slice_pitch);
+ 
++    cinecore_download_dst = dst_texture;
+     src_texture->texture_ops->texture_download_data(context, src_texture, src_sub_resource_idx, src_location,
+             &src_box, &data, dst_texture->resource.format, 0, 0, 0, dst_row_pitch, dst_slice_pitch);
++    cinecore_download_dst = NULL;
+ 
+     context_release(context);
+ 
+--- a/dlls/wined3d/texture_gl.c
++++ b/dlls/wined3d/texture_gl.c
+@@ -30,6 +30,7 @@
+  */
+ 
+ #include "wined3d_private.h"
++#include "unixlib.h"
+ #include "wined3d_gl.h"
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(d3d);
+@@ -1876,8 +1877,350 @@
+     }
+ 
+     free(temporary_mem);
++}
++
++/* Cinecore (macOS): asynchronous downloads for GetRenderTargetData into CPU-only DYNAMIC textures with user
++ * memory. Apple's OpenGL reads textures back into client memory synchronously, stalling the CS thread on every
++ * frame (madVR's D3D11 path reads a 16-bit float frame per frame). A second shared GL context is no better (Apple
++ * serialises the share group) and mapping through d3d9's LockRect holds the global d3d9 mutex while the CS thread
++ * gets to the map. Here everything stays on the CS thread and never waits: glReadPixels into one of our pixel
++ * pack buffers plus a fence; on later downloads, signalled buffers are mapped (immediate) and handed to a copy
++ * thread without GL, which copies into the destination memory; the buffer is unmapped afterwards and the
++ * destination is marked done. The application polls cinecore_download_wait() / cinecore_download_poll(). */
++extern struct wined3d_texture *cinecore_download_dst;
++
++struct cinecore_dst { void *dst; LONG queued; volatile LONG done; };
++struct cinecore_pbo { GLuint pbo; GLsync fence; void *dst; void *map; LONG seq; GLsizeiptr size, alloc; volatile LONG state; BOOL surface; };
++enum { CC_FREE, CC_READING, CC_MAPPED, CC_COPIED };
++static LONGLONG cinecore_copy_us, cinecore_map_us, cinecore_read_us; static unsigned int cinecore_copies;
++static struct
++{
++    CRITICAL_SECTION cs;
++    HANDLE copy_evt, done_evt, thread[4];
++    BOOL ready, failed;
++    struct cinecore_pbo p[16];
++    struct cinecore_dst dsts[64];
++    unsigned int dst_count;
++    LONG seq;
++    struct wined3d_device *device; /* fences belong to this device's GL contexts */
++    /* Parallel copy: the copy of one buffer is split in stripes over the copy threads. */
++    struct cinecore_pbo *job; volatile LONG stripes_left; HANDLE stripe_evt[8], stripe_done; unsigned int stripes;
++} cinecore;
++
++static struct cinecore_dst *cinecore_find_dst(void *dst, BOOL create)
++{
++    unsigned int i;
++    for (i = 0; i < cinecore.dst_count; ++i)
++        if (cinecore.dsts[i].dst == dst) return &cinecore.dsts[i];
++    if (!create || cinecore.dst_count == ARRAY_SIZE(cinecore.dsts)) return NULL;
++    cinecore.dsts[cinecore.dst_count].dst = dst;
++    return &cinecore.dsts[cinecore.dst_count++];
++}
++
++static void cinecore_mark_done(void *dst, LONG seq)
++{
++    struct cinecore_dst *d;
++
++    EnterCriticalSection(&cinecore.cs);
++    if ((d = cinecore_find_dst(dst, FALSE)) && d->done < seq) InterlockedExchange(&d->done, seq);
++    LeaveCriticalSection(&cinecore.cs);
++    SetEvent(cinecore.done_evt);
+ }
+ 
++static DWORD WINAPI cinecore_stripe_proc(void *arg)
++{
++    unsigned int idx = (unsigned int)(ULONG_PTR)arg, n = cinecore.stripes;
++
++    for (;;)
++    {
++        struct cinecore_pbo *b;
++        GLsizeiptr start, end;
++
++        WaitForSingleObject(cinecore.stripe_evt[idx], INFINITE);
++        b = cinecore.job;
++        start = b->size / n * idx;
++        end = idx == n - 1 ? b->size : b->size / n * (idx + 1);
++        memcpy((uint8_t *)b->dst + start, (uint8_t *)b->map + start, end - start);
++        if (!InterlockedDecrement(&cinecore.stripes_left)) SetEvent(cinecore.stripe_done);
++    }
++    return 0;
++}
++
++static DWORD WINAPI cinecore_copy_proc(void *arg)
++{
++    unsigned int i, j;
++
++    for (;;)
++    {
++        WaitForSingleObject(cinecore.copy_evt, INFINITE);
++        for (i = 0; i < ARRAY_SIZE(cinecore.p); ++i)
++        {
++            struct cinecore_pbo *b = &cinecore.p[i];
++            if (b->state != CC_MAPPED) continue;
++            LARGE_INTEGER t0, t1, f;
++            QueryPerformanceCounter(&t0);
++            cinecore.job = b;
++            cinecore.stripes_left = cinecore.stripes;
++            for (j = 0; j < cinecore.stripes; ++j) SetEvent(cinecore.stripe_evt[j]);
++            WaitForSingleObject(cinecore.stripe_done, INFINITE);
++            QueryPerformanceCounter(&t1); QueryPerformanceFrequency(&f);
++            cinecore_copy_us += (t1.QuadPart - t0.QuadPart) * 1000000 / f.QuadPart;
++            if (!(++cinecore_copies % 120))
++            {
++                MESSAGE("Cinecore: 120 copie, copia media %u us, mappa media %u us, lettura media %u us.\n",
++                        (unsigned)(cinecore_copy_us / 120), (unsigned)(cinecore_map_us / 120), (unsigned)(cinecore_read_us / 120));
++                cinecore_copy_us = cinecore_map_us = cinecore_read_us = 0;
++            }
++            InterlockedExchange(&b->state, CC_COPIED);
++            cinecore_mark_done(b->dst, b->seq); /* data is in place; the CS thread unmaps later */
++        }
++    }
++    return 0;
++}
++
++static BOOL cinecore_init(struct wined3d_context_gl *context_gl)
++{
++    const struct wined3d_gl_info *gl_info = context_gl->gl_info;
++    unsigned int i;
++    HANDLE t;
++
++    if (cinecore.ready) return TRUE;
++    if (cinecore.failed) return FALSE;
++    cinecore.failed = TRUE;
++    if (!gl_info->supported[ARB_SYNC] || !gl_info->supported[ARB_PIXEL_BUFFER_OBJECT]
++            || !gl_info->supported[ARB_MAP_BUFFER_RANGE])
++        return FALSE;
++    InitializeCriticalSection(&cinecore.cs);
++    cinecore.copy_evt = CreateEventW(NULL, FALSE, FALSE, NULL);
++    cinecore.done_evt = CreateEventW(NULL, FALSE, FALSE, NULL);
++    cinecore.stripe_done = CreateEventW(NULL, FALSE, FALSE, NULL);
++    for (i = 0; i < ARRAY_SIZE(cinecore.p); ++i) GL_EXTCALL(glGenBuffers(1, &cinecore.p[i].pbo));
++    {
++        char v[8] = {0};
++        cinecore.stripes = GetEnvironmentVariableA("CINECORE_COPY_THREADS", v, sizeof(v)) ? atoi(v) : 2;
++        if (cinecore.stripes < 1 || cinecore.stripes > ARRAY_SIZE(cinecore.stripe_evt)) cinecore.stripes = 2;
++    }
++    for (i = 0; i < cinecore.stripes; ++i)
++    {
++        cinecore.stripe_evt[i] = CreateEventW(NULL, FALSE, FALSE, NULL);
++        if (!(t = CreateThread(NULL, 0, cinecore_stripe_proc, (void *)(ULONG_PTR)i, 0, NULL))) return FALSE;
++        CloseHandle(t);
++    }
++    if (!(cinecore.thread[0] = CreateThread(NULL, 0, cinecore_copy_proc, NULL, 0, NULL)))
++        return FALSE;
++    SetThreadPriority(cinecore.thread[0], THREAD_PRIORITY_ABOVE_NORMAL);
++    cinecore.failed = FALSE;
++    cinecore.ready = TRUE;
++    MESSAGE("Cinecore: asynchronous texture downloads enabled.\n");
++    return TRUE;
++}
++
++/* CS thread: unmap copied buffers, map signalled ones. Never waits. */
++static void cinecore_collect(const struct wined3d_gl_info *gl_info)
++{
++    BOOL kick = FALSE, bound = FALSE;
++    unsigned int i;
++
++    for (i = 0; i < ARRAY_SIZE(cinecore.p); ++i)
++    {
++        struct cinecore_pbo *b = &cinecore.p[i];
++        if (b->state == CC_COPIED)
++        {
++            GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, b->pbo)); bound = TRUE;
++            GL_EXTCALL(glUnmapBuffer(GL_PIXEL_PACK_BUFFER));
++            b->map = NULL;
++            InterlockedExchange(&b->state, CC_FREE);
++        }
++        else if (b->state == CC_READING)
++        {
++            GLenum r = GL_EXTCALL(glClientWaitSync(b->fence, GL_SYNC_FLUSH_COMMANDS_BIT, 0));
++            if (r != GL_ALREADY_SIGNALED && r != GL_CONDITION_SATISFIED) continue;
++            GL_EXTCALL(glDeleteSync(b->fence));
++            b->fence = NULL;
++            if (b->surface)
++            {
++                /* GPU copy into the IOSurface finished: nothing to map or copy. */
++                InterlockedExchange(&b->state, CC_FREE);
++                cinecore_mark_done(b->dst, b->seq);
++                continue;
++            }
++            GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, b->pbo)); bound = TRUE;
++            {
++                LARGE_INTEGER t0, t1, f;
++                QueryPerformanceCounter(&t0);
++                b->map = GL_EXTCALL(glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, b->size, GL_MAP_READ_BIT));
++                QueryPerformanceCounter(&t1); QueryPerformanceFrequency(&f);
++                cinecore_map_us += (t1.QuadPart - t0.QuadPart) * 1000000 / f.QuadPart;
++            }
++            if (!b->map)
++            {
++                InterlockedExchange(&b->state, CC_FREE);
++                cinecore_mark_done(b->dst, b->seq);
++                continue;
++            }
++            InterlockedExchange(&b->state, CC_MAPPED);
++            kick = TRUE;
++        }
++    }
++    if (bound) GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
++    if (kick) SetEvent(cinecore.copy_evt);
++}
++
++static BOOL cinecore_async_download(struct wined3d_context_gl *context_gl, struct wined3d_texture_gl *src_texture_gl,
++        unsigned int src_sub_resource_idx, unsigned int src_location, const struct wined3d_box *src_box,
++        const struct wined3d_bo_address *dst_bo_addr, const struct wined3d_format *dst_format,
++        unsigned int dst_x, unsigned int dst_y, unsigned int dst_z, unsigned int dst_row_pitch)
++{
++    const struct wined3d_gl_info *gl_info = context_gl->gl_info;
++    struct wined3d_texture *dst = cinecore_download_dst, *src = &src_texture_gl->t;
++    const struct wined3d_format_gl *format_gl = wined3d_format_gl(src->resource.format);
++    struct cinecore_pbo *b = NULL;
++    struct cinecore_dst *d;
++    GLsizeiptr size;
++    unsigned int i;
++    LONG seq;
++
++    if (!dst || !(dst->resource.usage & WINED3DUSAGE_DYNAMIC) || (dst->resource.access & WINED3D_RESOURCE_ACCESS_GPU)
++            || !dst->sub_resources[0].user_memory || dst_bo_addr->buffer_object || !dst_bo_addr->addr)
++        return FALSE;
++    if (!cinecore_init(context_gl))
++        return FALSE;
++    cinecore.device = context_gl->c.device;
++    cinecore_collect(gl_info);
++    /* A 1x1 download is only a poll from the application (collect finished readbacks, e.g. while paused):
++     * it goes through the asynchronous path too, a synchronous one would wait for the GPU. */
++    if (src_sub_resource_idx || dst_x || dst_y || dst_z || src_box->left || src_box->top
++            || src_box->right != wined3d_texture_get_level_width(src, 0)
++            || src_box->bottom != wined3d_texture_get_level_height(src, 0)
++            || wined3d_texture_gl_get_sub_resource_target(src_texture_gl, 0) != GL_TEXTURE_2D
++            || format_gl->f.conv_byte_count || dst_format->id != src->resource.format->id
++            || dst_row_pitch != src_box->right * src->resource.format->byte_count
++            || !(src->resource.bind_flags & WINED3D_BIND_RENDER_TARGET))
++        return FALSE;
++
++    EnterCriticalSection(&cinecore.cs);
++    d = cinecore_find_dst(dst_bo_addr->addr, TRUE);
++    seq = d ? (d->queued = ++cinecore.seq) : 0;
++    LeaveCriticalSection(&cinecore.cs);
++    if (!d) return FALSE;
++    if (src_box->right == 1 && src_box->bottom == 1)
++    {
++        /* Poll from the application: collecting above was the point, no readback needed. */
++        cinecore_mark_done(dst_bo_addr->addr, seq);
++        return TRUE;
++    }
++    {
++        /* IOSurface copies use the second half of the slots, readbacks the first: one kind cannot starve the other. */
++        BOOL surface = ((const UINT32 *)dst_bo_addr->addr)[0] == 0x4f494343;
++        unsigned int first = surface ? ARRAY_SIZE(cinecore.p) / 2 : 0, last = surface ? ARRAY_SIZE(cinecore.p) : ARRAY_SIZE(cinecore.p) / 2;
++        for (i = first; i < last; ++i) if (cinecore.p[i].state == CC_FREE) { b = &cinecore.p[i]; break; }
++    }
++    if (!b)
++    {
++        /* All buffers busy: skip this frame (the application keeps the previous one). */
++        cinecore_mark_done(dst_bo_addr->addr, seq);
++        return TRUE;
++    }
++
++    if (((const UINT32 *)dst_bo_addr->addr)[0] == 0x4f494343 /* 'CCIO' */)
++    {
++        /* Zero copy: the destination names an IOSurface shared with Metal, blit the frame there on the GPU. */
++        struct cinecore_surface_blit_params bp;
++        static BOOL unix_ready;
++        if (!unix_ready && !__wine_init_unix_call()) unix_ready = TRUE;
++        bp.id = ((const UINT32 *)dst_bo_addr->addr)[1];
++        bp.src_texture = wined3d_texture_gl_get_texture_name(src_texture_gl, &context_gl->c,
++                src_location == WINED3D_LOCATION_TEXTURE_SRGB);
++        bp.width = src_box->right; bp.height = src_box->bottom; bp.ok = 0;
++        wined3d_context_gl_apply_fbo_state_explicit(context_gl, GL_READ_FRAMEBUFFER, &src->resource, 0, NULL, 0, src_location);
++        gl_info->gl_ops.gl.p_glReadBuffer(GL_COLOR_ATTACHMENT0);
++        if (!unix_ready || WINE_UNIX_CALL(unix_cinecore_surface_blit, &bp) || !bp.ok)
++        {
++            static int warned;
++            if (!warned++) ERR("Cinecore: IOSurface blit failed.\n");
++            cinecore_mark_done(dst_bo_addr->addr, seq);
++            return TRUE;
++        }
++        /* wined3d's cached GL state: framebuffer bindings were restored by the Unix side. */
++        b->fence = GL_EXTCALL(glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0));
++        gl_info->gl_ops.gl.p_glFlush();
++        b->dst = dst_bo_addr->addr; b->seq = seq; b->size = 0; b->surface = TRUE;
++        InterlockedExchange(&b->state, CC_READING);
++        return TRUE;
++    }
++    b->surface = FALSE;
++    size = (GLsizeiptr)dst_row_pitch * src_box->bottom;
++    wined3d_context_gl_apply_fbo_state_explicit(context_gl, GL_READ_FRAMEBUFFER, &src->resource, 0, NULL, 0, src_location);
++    gl_info->gl_ops.gl.p_glReadBuffer(GL_COLOR_ATTACHMENT0);
++    GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, b->pbo));
++    if (b->alloc != size)
++    {
++        GL_EXTCALL(glBufferData(GL_PIXEL_PACK_BUFFER, size, NULL, GL_STREAM_READ));
++        b->alloc = size;
++    }
++    {
++        LARGE_INTEGER t0, t1, f;
++        QueryPerformanceCounter(&t0);
++        gl_info->gl_ops.gl.p_glReadPixels(0, 0, src_box->right, src_box->bottom, format_gl->format, format_gl->type, NULL);
++        QueryPerformanceCounter(&t1); QueryPerformanceFrequency(&f);
++        if (src_box->right > 1) cinecore_read_us += (t1.QuadPart - t0.QuadPart) * 1000000 / f.QuadPart;
++    }
++    GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
++    b->fence = GL_EXTCALL(glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0));
++    gl_info->gl_ops.gl.p_glFlush(); /* the fence must reach the GPU, nothing else may flush for a while */
++    checkGLcall("Cinecore asynchronous readback");
++    b->dst = dst_bo_addr->addr; b->seq = seq; b->size = size;
++    InterlockedExchange(&b->state, CC_READING);
++    return TRUE;
++}
++
++/* Cinecore: called from the CS thread's query polling (it runs continuously while madVR has event queries
++ * pending): finished copies are marked done as soon as the GPU is through, not at the next download. */
++void cinecore_cs_poll(struct wined3d_device *device)
++{
++    struct wined3d_context *context;
++    unsigned int i;
++    BOOL busy = FALSE;
++
++    if (!cinecore.ready || device != cinecore.device) return;
++    for (i = 0; i < ARRAY_SIZE(cinecore.p); ++i)
++        if (cinecore.p[i].state == CC_READING || cinecore.p[i].state == CC_COPIED) { busy = TRUE; break; }
++    if (!busy) return;
++    context = context_acquire(device, NULL, 0);
++    cinecore_collect(wined3d_context_gl(context)->gl_info);
++    context_release(context);
++}
++
++/* Cinecore: creates a linear half-float IOSurface; the next shared RGBA16Float Metal texture of this size is
++ * created on it. Returns the IOSurfaceID (0 on failure). */
++UINT CDECL cinecore_surface_create(UINT width, UINT height)
++{
++    struct cinecore_surface_create_params params = { width, height, 0 };
++    NTSTATUS st;
++    if ((st = __wine_init_unix_call())) { ERR("Cinecore: Unix library not loaded, status %#lx.\n", st); return 0; }
++    if ((st = WINE_UNIX_CALL(unix_cinecore_surface_create, &params))) { ERR("Cinecore: surface_create status %#lx.\n", st); return 0; }
++    return params.id;
++}
++
++/* Returns TRUE once the last asynchronous download into dst has completed (or none was queued). */
++BOOL CDECL cinecore_download_wait(void *dst, DWORD timeout_ms)
++{
++    struct cinecore_dst *d;
++    DWORD start = GetTickCount();
++
++    if (!cinecore.ready) return TRUE;
++    EnterCriticalSection(&cinecore.cs);
++    d = cinecore_find_dst(dst, FALSE);
++    LeaveCriticalSection(&cinecore.cs);
++    if (!d) return TRUE;
++    while (d->done < d->queued)
++    {
++        if (cinecore.failed || GetTickCount() - start >= timeout_ms) return FALSE;
++        WaitForSingleObject(cinecore.done_evt, 1);
++    }
++    return TRUE;
++}
++
+ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
+         struct wined3d_texture *src_texture, unsigned int src_sub_resource_idx, unsigned int src_location,
+         const struct wined3d_box *src_box, const struct wined3d_bo_address *dst_bo_addr,
+@@ -1901,6 +2244,10 @@
+             debug_box(src_box), debug_bo_address(dst_bo_addr), debug_d3dformat(dst_format->id),
+             dst_x, dst_y, dst_z, dst_row_pitch, dst_slice_pitch);
+ 
++    if (cinecore_download_dst && cinecore_async_download(context_gl, src_texture_gl, src_sub_resource_idx, src_location,
++            src_box, dst_bo_addr, dst_format, dst_x, dst_y, dst_z, dst_row_pitch))
++        return;
++
+     if (src_location == WINED3D_LOCATION_TEXTURE_SRGB)
+     {
+         srgb = true;
+--- a/dlls/wined3d/wined3d.spec
++++ b/dlls/wined3d/wined3d.spec
+@@ -406,3 +406,6 @@
+ @ cdecl vkd3d_shader_scan(ptr ptr)
+ @ cdecl vkd3d_shader_serialize_dxbc(long ptr ptr ptr)
+ @ cdecl vkd3d_shader_serialize_root_signature(ptr ptr ptr)
++
++@ cdecl cinecore_download_wait(ptr long)
++@ cdecl cinecore_surface_create(long long)
+--- a/dlls/wined3d/unixlib.h
++++ b/dlls/wined3d/unixlib.h
+@@ -72,6 +72,21 @@
+     unix_va_decoder_create_vk,
+     unix_va_decoder_destroy_vk,
+     unix_va_decoder_decode,
++    unix_cinecore_surface_create,
++    unix_cinecore_surface_blit,
+ };
+ 
++/* Cinecore (macOS): IOSurface sharing between OpenGL and Metal, see cinecore_mac.m. */
++struct cinecore_surface_create_params
++{
++    UINT32 width, height;
++    UINT32 id; /* out: IOSurfaceID */
++};
++
++struct cinecore_surface_blit_params
++{
++    UINT32 id, src_texture, width, height;
++    UINT32 ok; /* out */
++};
++
+ #endif
+--- a/dlls/wined3d/Makefile.in
++++ b/dlls/wined3d/Makefile.in
+@@ -4,7 +4,7 @@
+ IMPORTS   = $(VKD3D_PE_LIBS) opengl32 user32 gdi32 advapi32
+ EXTRAINCL = $(VKD3D_PE_CFLAGS)
+ UNIX_CFLAGS = $(VA_CFLAGS)
+-UNIX_LIBS = -lwin32u
++UNIX_LIBS = -lwin32u -framework Foundation -framework Metal -framework IOSurface -framework OpenGL -framework CoreFoundation -lobjc
+ 
+ VER_FILEDESCRIPTION_STR = "Wine D3D"
+ 
+@@ -12,6 +12,7 @@
+ 	adapter_gl.c \
+ 	adapter_vk.c \
+ 	buffer.c \
++	cinecore_mac.m \
+ 	context.c \
+ 	context_gl.c \
+ 	context_vk.c \
+--- a/dlls/wined3d/cs.c
++++ b/dlls/wined3d/cs.c
+@@ -3501,10 +3501,14 @@
+     wined3d_cs_reference_resource,
+     wined3d_cs_reference_command_list,
+ };
++
++void cinecore_cs_poll(struct wined3d_device *device); /* texture_gl.c */
+ 
+ static void poll_queries(struct wined3d_cs *cs)
+ {
+     struct wined3d_query *query, *cursor;
++
++    cinecore_cs_poll(cs->c.device);
+ 
+     LIST_FOR_EACH_ENTRY_SAFE(query, cursor, &cs->query_poll_list, struct wined3d_query, poll_list_entry)
+     {
+--- a/dlls/wined3d/cinecore_mac.m
++++ b/dlls/wined3d/cinecore_mac.m
+@@ -0,0 +1,330 @@
++/*
++ * Cinecore (macOS): zero-copy GPU sharing between wined3d (OpenGL) and DXMT (Metal) through IOSurface.
++ *
++ * Metal shared textures (newSharedTextureWithDescriptor) are backed by GPU-private IOSurfaces that OpenGL
++ * cannot bind. For the frames that madVR renders in Direct3D 9 and presents in Direct3D 11, the application
++ * creates a linear 64-bit half-float IOSurface first (cinecore_surface_create); the next shared RGBA16Float
++ * Metal texture of that size is then created on it (method swizzling on the Metal classes), its shared handle
++ * carries the IOSurface mach port and opening it on another MTLDevice gives a texture on the same IOSurface.
++ * On the wined3d CS thread the IOSurface is bound to a rectangle texture (CGLTexImageIOSurface2D) and the
++ * frame is copied there with glBlitFramebuffer: no readback to system memory, no CPU copy.
++ */
++
++#if 0
++#pragma makedep unix
++#endif
++
++#include "config.h"
++
++#if !defined(SONAME_LIBVA) || !defined(SONAME_LIBVA_DRM)
++
++#define GL_SILENCE_DEPRECATION
++#import <Foundation/Foundation.h>
++#import <Metal/Metal.h>
++#import <IOSurface/IOSurface.h>
++#import <OpenGL/OpenGL.h>
++#import <OpenGL/gl3.h>
++#import <objc/runtime.h>
++#include <pthread.h>
++
++/* Self-contained: Wine's Windows headers redefine BOOL and clash with Objective-C. Must match unixlib.h. */
++typedef unsigned int NTSTATUS;
++typedef NTSTATUS (*unixlib_entry_t)(void *args);
++#define STATUS_SUCCESS 0
++#define STATUS_UNSUCCESSFUL 0xC0000001
++enum { unix_cinecore_surface_create = 4, unix_cinecore_surface_blit = 5 };
++struct cinecore_surface_create_params { uint32_t width, height, id; };
++struct cinecore_surface_blit_params { uint32_t id, src_texture, width, height, ok; };
++
++static pthread_mutex_t cc_lock = PTHREAD_MUTEX_INITIALIZER;
++static IOSurfaceRef cc_pending;
++static pthread_t cc_pending_thread; /* only the thread that asked for the surface may take it */
++static char cc_key_surface, cc_key_port;
++static Class cc_handle_class;
++static IMP orig_new_shared_desc, orig_new_shared_handle_dev, orig_tex_new_handle, orig_handle_init_port;
++static BOOL cc_swizzled;
++
++static IOSurfaceRef cc_surface_of(id obj)
++{
++    return obj ? (IOSurfaceRef)objc_getAssociatedObject(obj, &cc_key_surface) : NULL;
++}
++
++static void cc_set_surface(id obj, IOSurfaceRef surface)
++{
++    objc_setAssociatedObject(obj, &cc_key_surface, (id)surface, OBJC_ASSOCIATION_RETAIN);
++}
++
++/* -[CinecoreSurfaceHandle createMachPort] */
++static mach_port_t cc_handle_create_port(id self, SEL cmd)
++{
++    IOSurfaceRef s = cc_surface_of(self);
++    return s ? IOSurfaceCreateMachPort(s) : MACH_PORT_NULL;
++}
++
++static id cc_new_surface_handle(IOSurfaceRef s)
++{
++    id h = [[cc_handle_class alloc] init];
++    cc_set_surface(h, s);
++    return h;
++}
++
++static id<MTLTexture> cc_texture_on_surface(id<MTLDevice> dev, IOSurfaceRef s)
++{
++    MTLTextureDescriptor *d = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA16Float
++            width:IOSurfaceGetWidth(s) height:IOSurfaceGetHeight(s) mipmapped:NO];
++    d.usage = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite | MTLTextureUsageRenderTarget;
++    d.storageMode = MTLStorageModeShared;
++    id<MTLTexture> t = [dev newTextureWithDescriptor:d iosurface:s plane:0];
++    if (t) cc_set_surface(t, s);
++    return t;
++}
++
++/* -[MTLDevice newSharedTextureWithDescriptor:] */
++static id cc_new_shared_desc(id self, SEL cmd, MTLTextureDescriptor *desc)
++{
++    IOSurfaceRef s = NULL;
++
++    pthread_mutex_lock(&cc_lock);
++    if (cc_pending && pthread_equal(cc_pending_thread, pthread_self()) && desc.pixelFormat == MTLPixelFormatRGBA16Float && desc.width == IOSurfaceGetWidth(cc_pending)
++            && desc.height == IOSurfaceGetHeight(cc_pending))
++    {
++        s = cc_pending;
++        cc_pending = NULL;
++    }
++    pthread_mutex_unlock(&cc_lock);
++    if (s)
++    {
++        id<MTLTexture> t = cc_texture_on_surface(self, s);
++        CFRelease(s);
++        if (t)
++        {
++            fprintf(stderr, "Cinecore: shared Metal texture %lux%lu on IOSurface %u.\n",
++                    (unsigned long)t.width, (unsigned long)t.height, IOSurfaceGetID(cc_surface_of(t)));
++            return t;
++        }
++    }
++    return ((id (*)(id, SEL, MTLTextureDescriptor *))orig_new_shared_desc)(self, cmd, desc);
++}
++
++/* -[MTLTexture newSharedTextureHandle] */
++static id cc_tex_new_handle(id self, SEL cmd)
++{
++    IOSurfaceRef s = cc_surface_of(self);
++    if (s) return cc_new_surface_handle(s);
++    return ((id (*)(id, SEL))orig_tex_new_handle)(self, cmd);
++}
++
++/* -[MTLSharedTextureHandle initWithMachPort:] */
++static id cc_handle_init_port(id self, SEL cmd, mach_port_t port)
++{
++    IOSurfaceRef s = IOSurfaceLookupFromMachPort(port);
++    if (s && IOSurfaceGetWidth(s) > 0 && IOSurfaceGetPixelFormat(s) == 'RGhA')
++    {
++        /* One of ours: a linear IOSurface, not the GPU-private backing of a Metal shared texture. */
++        id h = [[cc_handle_class alloc] init];
++        cc_set_surface(h, s);
++        CFRelease(s);
++        [self release];
++        return h;
++    }
++    if (s) CFRelease(s);
++    return ((id (*)(id, SEL, mach_port_t))orig_handle_init_port)(self, cmd, port);
++}
++
++/* -[MTLDevice newSharedTextureWithHandle:] */
++static id cc_new_shared_handle_dev(id self, SEL cmd, id handle)
++{
++    IOSurfaceRef s = cc_surface_of(handle);
++    if (s)
++    {
++        id<MTLTexture> t = cc_texture_on_surface(self, s);
++        if (t) return t;
++    }
++    return ((id (*)(id, SEL, id))orig_new_shared_handle_dev)(self, cmd, handle);
++}
++
++static BOOL cc_swizzle(Class cls, SEL sel, IMP imp, IMP *orig)
++{
++    Method m = class_getInstanceMethod(cls, sel);
++    if (!m) return FALSE;
++    *orig = method_setImplementation(m, imp);
++    return TRUE;
++}
++
++static BOOL cc_install(void)
++{
++    @autoreleasepool
++    {
++        id<MTLDevice> dev;
++        IOSurfaceRef probe;
++        id<MTLTexture> tex, priv;
++        MTLTextureDescriptor *d;
++        Class base;
++        BOOL ok = TRUE;
++
++        if (cc_swizzled) return TRUE;
++        fprintf(stderr, "Cinecore: install 1\n");
++        if (!(dev = MTLCreateSystemDefaultDevice())) return FALSE;
++        fprintf(stderr, "Cinecore: install 2 dev=%p\n", dev);
++        base = NSClassFromString(@"MTLSharedTextureHandle");
++        if (!base) return FALSE;
++        cc_handle_class = objc_allocateClassPair(base, "CinecoreSurfaceHandle", 0);
++        class_addMethod(cc_handle_class, sel_registerName("createMachPort"), (IMP)cc_handle_create_port, "I@:");
++        objc_registerClassPair(cc_handle_class);
++        fprintf(stderr, "Cinecore: install 3 base=%p cls=%p\n", base, cc_handle_class);
++
++        /* Concrete classes: textures on IOSurface and private shared textures can differ. */
++        probe = IOSurfaceCreate((CFDictionaryRef)@{ (id)kIOSurfaceWidth: @16, (id)kIOSurfaceHeight: @16,
++                (id)kIOSurfaceBytesPerElement: @8, (id)kIOSurfacePixelFormat: @((uint32_t)'RGhA') });
++        d = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA16Float width:16 height:16 mipmapped:NO];
++        d.storageMode = MTLStorageModeShared;
++        tex = [dev newTextureWithDescriptor:d iosurface:probe plane:0];
++        d.storageMode = MTLStorageModePrivate;
++        priv = [dev newSharedTextureWithDescriptor:d];
++        fprintf(stderr, "Cinecore: install 4 probe=%p tex=%p priv=%p\n", probe, tex, priv);
++
++        ok &= cc_swizzle([dev class], @selector(newSharedTextureWithDescriptor:), (IMP)cc_new_shared_desc, &orig_new_shared_desc);
++        ok &= cc_swizzle([dev class], @selector(newSharedTextureWithHandle:), (IMP)cc_new_shared_handle_dev, &orig_new_shared_handle_dev);
++        if (tex) ok &= cc_swizzle([tex class], @selector(newSharedTextureHandle), (IMP)cc_tex_new_handle, &orig_tex_new_handle);
++        if (priv && [priv class] != [tex class])
++        {
++            IMP unused;
++            /* The private class keeps its own implementation; ours only answers for IOSurface textures. */
++            (void)unused;
++        }
++        ok &= cc_swizzle(base, sel_registerName("initWithMachPort:"), (IMP)cc_handle_init_port, &orig_handle_init_port);
++        [tex release]; [priv release]; CFRelease(probe); [dev release];
++        cc_swizzled = ok;
++        fprintf(stderr, "Cinecore: IOSurface sharing hooks %s.\n", ok ? "installed" : "FAILED");
++        return ok;
++    }
++}
++
++static NTSTATUS cinecore_surface_create(void *args)
++{
++    struct cinecore_surface_create_params *params = args;
++    IOSurfaceRef s;
++    size_t bpr;
++
++    params->id = 0;
++    fprintf(stderr, "Cinecore: create %ux%u\n", params->width, params->height);
++    if (!cc_install()) return STATUS_UNSUCCESSFUL;
++    fprintf(stderr, "Cinecore: create after install\n");
++    bpr = IOSurfaceAlignProperty(kIOSurfaceBytesPerRow, (size_t)params->width * 8);
++    s = IOSurfaceCreate((CFDictionaryRef)@{ (id)kIOSurfaceWidth: @(params->width), (id)kIOSurfaceHeight: @(params->height),
++            (id)kIOSurfaceBytesPerElement: @8, (id)kIOSurfaceBytesPerRow: @(bpr),
++            (id)kIOSurfacePixelFormat: @((uint32_t)'RGhA') });
++    if (!s) return STATUS_UNSUCCESSFUL;
++    pthread_mutex_lock(&cc_lock);
++    if (cc_pending) CFRelease(cc_pending);
++    cc_pending = s; /* taken by the next shared RGBA16Float Metal texture of this size, on this thread */
++    cc_pending_thread = pthread_self();
++    pthread_mutex_unlock(&cc_lock);
++    params->id = IOSurfaceGetID(s);
++    return STATUS_SUCCESS;
++}
++
++/* GL side, on the thread with wined3d's context current. */
++static struct { uint32_t id; GLuint rect; uint32_t width, height; } cc_gl[16];
++/* Framebuffer objects are not shared between GL contexts, and wined3d uses several: one pair per context. */
++static struct { CGLContextObj ctx; uint32_t id; GLuint fbo_read, fbo_draw; } cc_fbo[64];
++
++static NTSTATUS cinecore_surface_blit(void *args)
++{
++    struct cinecore_surface_blit_params *params = args;
++    CGLContextObj ctx = CGLGetCurrentContext();
++    GLint prev_read, prev_draw, prev_rect;
++    GLboolean scissor, srgb;
++    GLuint fbo_read, fbo_draw;
++    unsigned int i;
++
++    params->ok = 0;
++    if (!ctx || !params->id) return STATUS_UNSUCCESSFUL;
++    for (i = 0; i < 16 && cc_gl[i].id && cc_gl[i].id != params->id; ++i);
++    if (i == 16) return STATUS_UNSUCCESSFUL;
++
++    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prev_read);
++    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prev_draw);
++    if (!cc_gl[i].id)
++    {
++        IOSurfaceRef s = IOSurfaceLookup(params->id);
++        CGLError err;
++        if (!s) return STATUS_UNSUCCESSFUL;
++        glGetIntegerv(GL_TEXTURE_BINDING_RECTANGLE, &prev_rect);
++        glGenTextures(1, &cc_gl[i].rect);
++        glBindTexture(GL_TEXTURE_RECTANGLE, cc_gl[i].rect);
++        err = CGLTexImageIOSurface2D(ctx, GL_TEXTURE_RECTANGLE, GL_RGBA16F, (GLsizei)IOSurfaceGetWidth(s),
++                (GLsizei)IOSurfaceGetHeight(s), GL_RGBA, GL_HALF_FLOAT, s, 0);
++        glBindTexture(GL_TEXTURE_RECTANGLE, prev_rect);
++        cc_gl[i].width = (uint32_t)IOSurfaceGetWidth(s);
++        cc_gl[i].height = (uint32_t)IOSurfaceGetHeight(s);
++        CFRelease(s);
++        if (err != kCGLNoError)
++        {
++            fprintf(stderr, "Cinecore: CGLTexImageIOSurface2D failed, error %d.\n", err);
++            glDeleteTextures(1, &cc_gl[i].rect);
++            return STATUS_UNSUCCESSFUL;
++        }
++        cc_gl[i].id = params->id;
++        fprintf(stderr, "Cinecore: IOSurface %u bound to GL texture %u (%ux%u).\n", params->id, cc_gl[i].rect,
++                cc_gl[i].width, cc_gl[i].height);
++    }
++
++    {
++        unsigned int f, free_slot = 64;
++        for (f = 0; f < 64; ++f)
++        {
++            if (cc_fbo[f].ctx == ctx && cc_fbo[f].id == params->id) break;
++            if (!cc_fbo[f].ctx && free_slot == 64) free_slot = f;
++        }
++        if (f == 64)
++        {
++            if (free_slot == 64) return STATUS_UNSUCCESSFUL;
++            f = free_slot;
++            cc_fbo[f].ctx = ctx; cc_fbo[f].id = params->id;
++            glGenFramebuffers(1, &cc_fbo[f].fbo_read);
++            glGenFramebuffers(1, &cc_fbo[f].fbo_draw);
++            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, cc_fbo[f].fbo_draw);
++            glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, cc_gl[i].rect, 0);
++            if (glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
++                fprintf(stderr, "Cinecore: IOSurface framebuffer incomplete %#x.\n", glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER));
++            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prev_draw);
++        }
++        fbo_read = cc_fbo[f].fbo_read; fbo_draw = cc_fbo[f].fbo_draw;
++    }
++    while (glGetError() != GL_NO_ERROR); /* errors left by wined3d are not ours */
++    scissor = glIsEnabled(GL_SCISSOR_TEST);
++    srgb = glIsEnabled(GL_FRAMEBUFFER_SRGB);
++#define CC_CHECK(what) do { GLenum e_ = glGetError(); static int n_; if (e_ && n_++ < 3) fprintf(stderr, "Cinecore: %s -> %#x\n", what, e_); } while (0)
++    /* The read framebuffer (madVR's texture) was set up by wined3d itself on the Windows side. */
++    (void)fbo_read;
++    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo_draw); CC_CHECK("bind draw");
++    if (scissor) glDisable(GL_SCISSOR_TEST);
++    if (srgb) glDisable(GL_FRAMEBUFFER_SRGB);
++    glBlitFramebuffer(0, 0, params->width, params->height, 0, 0, params->width, params->height,
++            GL_COLOR_BUFFER_BIT, GL_NEAREST); CC_CHECK("blit");
++    if (scissor) glEnable(GL_SCISSOR_TEST);
++    if (srgb) glEnable(GL_FRAMEBUFFER_SRGB);
++    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prev_draw);
++    {
++        GLenum e = glGetError();
++        static int logged;
++        params->ok = e == GL_NO_ERROR;
++        if (!params->ok && logged++ < 5) fprintf(stderr, "Cinecore: blit GL error %#x.\n", e);
++    }
++    return STATUS_SUCCESS;
++}
++
++__attribute__((visibility("default"))) const unixlib_entry_t __wine_unix_call_funcs[] =
++{
++    [unix_cinecore_surface_create] = cinecore_surface_create,
++    [unix_cinecore_surface_blit] = cinecore_surface_blit,
++};
++
++__attribute__((visibility("default"))) const unixlib_entry_t __wine_unix_call_wow64_funcs[] =
++{
++    [unix_cinecore_surface_create] = cinecore_surface_create,
++    [unix_cinecore_surface_blit] = cinecore_surface_blit,
++};
++
++#endif

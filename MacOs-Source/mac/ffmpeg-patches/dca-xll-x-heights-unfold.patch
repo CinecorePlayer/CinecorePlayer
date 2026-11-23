@@ -1,0 +1,38 @@
+Cinecore: with x_heights the DTS:X bed is output without the heights (exact subtraction of the encoder's fold), so a spatial renderer does not play them twice. Applies after dca-xll-x-heights.patch (FFmpegBuild, LGPL-2.1+).
+
+--- a/libavcodec/dca_xll.c	2026-11-21 19:44:50
++++ b/libavcodec/dca_xll.c	2026-11-21 19:44:51
+@@ -1810,6 +1810,33 @@
+                         height[k] *= (SUINT)(1 << adj);
+                 }
+             }
++
++            // Cinecore: the bed comes out without the heights, so a spatial
++            // renderer does not play them twice (once above, once folded in
++            // the speaker below). Lossless stream: the subtraction is exact
++            // up to the encoder's rounding. Standard, D1 and D3 fold at -3 dB
++            // (23170/32768), D0 at unity; any other presentation keeps its
++            // bed and outputs silent heights.
++            {
++                static const uint8_t bed_spkr[4] = {
++                    DCA_SPEAKER_L, DCA_SPEAKER_R, DCA_SPEAKER_Lsr, DCA_SPEAKER_Rsr
++                };
++                int pres = dca->x_presentation;
++                int gain = pres == 1 || pres == 0xd1 || pres == 0xd3 ? 23170 :
++                           pres == 0xd0 ? 32768 : 0;
++                for (i = 0; i < 4; i++) {
++                    int32_t *height = s->output_samples[x_height_spkr[i]];
++                    int32_t *bed    = s->output_samples[bed_spkr[i]];
++                    if (!height || !bed)
++                        continue;
++                    if (!gain) {
++                        memset(height, 0, s->nframesamples * sizeof(*height));
++                        continue;
++                    }
++                    for (k = 0; k < s->nframesamples; k++)
++                        bed[k] -= (int32_t)(((int64_t)height[k] * gain + (1 << 14)) >> 15);
++                }
++            }
+         } else {
+             av_fast_malloc(&s->x_silence, &s->x_silence_size,
+                            s->nframesamples * sizeof(*s->x_silence));

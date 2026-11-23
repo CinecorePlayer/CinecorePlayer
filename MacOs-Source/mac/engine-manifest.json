@@ -1,0 +1,346 @@
+{
+  "version": "2026.11.20",
+  "runtime": {
+    "name": "MetalSharp Wine",
+    "version": "6.0",
+    "url": "https://github.com/metalsharp/MetalSharp-Wine/releases/download/v6.0/MetalSharp-Wine-6.0-arm64.zip",
+    "sha256": "25f7dff91000c03c835b800980878acb12c1f952a4b7853f77de7f21fb87046f",
+    "size": 1356725682,
+    "app": "MetalSharp-Wine.app"
+  },
+  "components": [
+    {
+      "name": "madVR",
+      "version": "0.92.17",
+      "url": "https://www.madshi.net/madVR.zip",
+      "sha256": "336651a376890dfb56d4f14871f4e8c7d495d79ceb4d0d69a48f62236f4af623",
+      "size": 40416120,
+      "files": [
+        {
+          "zip": "madVR/amd_ags_x64.dll",
+          "path": "drive_c/Cinecore/madVR/amd_ags_x64.dll",
+          "sha256": "2b4059afffa60078014fe490eb0700716689b55ab3a334435c69af4292b985c1",
+          "size": 107520
+        },
+        {
+          "zip": "madVR/amd_ags_x86.dll",
+          "path": "drive_c/Cinecore/madVR/amd_ags_x86.dll",
+          "sha256": "133cd6b08a6378f9a13c2097ecad5266fdb461b445729126795f52ebd3c1a923",
+          "size": 94720
+        },
+        {
+          "zip": "madVR/changelog.txt",
+          "path": "drive_c/Cinecore/madVR/changelog.txt",
+          "sha256": "ad4bfe639904622c7e62bfecba9526dc81cce047a6f8c3ba124144a807f17ebe",
+          "size": 120727
+        },
+        {
+          "zip": "madVR/dbghelp.dll",
+          "path": "drive_c/Cinecore/madVR/dbghelp.dll",
+          "sha256": "c06430b8cb025be506be50a756488e1bcc3827c4f45158d93e4e3eeb98ce1e4f",
+          "size": 1213200
+        },
+        {
+          "zip": "madVR/enable nvidia 3d.reg",
+          "path": "drive_c/Cinecore/madVR/enable nvidia 3d.reg",
+          "sha256": "870f5560277998962be89ec8850bee90eb31344ee42a3304f56058085046821d",
+          "size": 158
+        },
+        {
+          "zip": "madVR/install.bat",
+          "path": "drive_c/Cinecore/madVR/install.bat",
+          "sha256": "9d8cc8bc5e57b689d72f027dab912cab5e173bae969342c43ab413a2757f2408",
+          "size": 527
+        },
+        {
+          "zip": "madVR/legal stuff/AdaptiveSharpen/license.txt",
+          "path": "drive_c/Cinecore/madVR/legal stuff/AdaptiveSharpen/license.txt",
+          "sha256": "7c6db76fc404f0875ca53f800b4e8769dfeb8e33676bd5b9718268efee4f4dc8",
+          "size": 1373
+        },
+        {
+          "zip": "madVR/legal stuff/FineSharp/readme.txt",
+          "path": "drive_c/Cinecore/madVR/legal stuff/FineSharp/readme.txt",
+          "sha256": "f85c6701c64ff99ecaa4fec60235d301498ad8f228ddd32d4ef1251005727adf",
+          "size": 2922
+        },
+        {
+          "zip": "madVR/legal stuff/nnedi3ocl/COPYING.LGPLv3",
+          "path": "drive_c/Cinecore/madVR/legal stuff/nnedi3ocl/COPYING.LGPLv3",
+          "sha256": "2cf34ac038aee5ac06f933ddd1da9826e0bb9383c13d8e0b088fced0b4a95b5b",
+          "size": 7814
+        },
+        {
+          "zip": "madVR/legal stuff/nnedi3ocl/nnedi3ocl.cl",
+          "path": "drive_c/Cinecore/madVR/legal stuff/nnedi3ocl/nnedi3ocl.cl",
+          "sha256": "6109f44fb8264e76993e7a24a02d747c53dbee336291050dd57f74c17f2a2513",
+          "size": 5000
+        },
+        {
+          "zip": "madVR/legal stuff/Shiandow/LGPL-3.0.txt",
+          "path": "drive_c/Cinecore/madVR/legal stuff/Shiandow/LGPL-3.0.txt",
+          "sha256": "e4cbb53080116f800a61786b0bb1e5d7e0fd99b632cc96d53b744f7d324e3df8",
+          "size": 7631
+        },
+        {
+          "zip": "madVR/legal stuff/Shiandow/LICENSE",
+          "path": "drive_c/Cinecore/madVR/legal stuff/Shiandow/LICENSE",
+          "sha256": "90c43342d173b1513f0c90626af0ffebe12b3bcccdbc4e48e49572060149390c",
+          "size": 705
+        },
+        {
+          "zip": "madVR/legal stuff/Shiandow/readme.txt",
+          "path": "drive_c/Cinecore/madVR/legal stuff/Shiandow/readme.txt",
+          "sha256": "69a9d920c0ec9158127ccfc4af4b63a50a40f26d4f44a78ff7ebc4bf1faf3c4f",
+          "size": 186
+        },
+        {
+          "zip": "madVR/legal stuff/Shiandow/RenderScripts.zip",
+          "path": "drive_c/Cinecore/madVR/legal stuff/Shiandow/RenderScripts.zip",
+          "sha256": "76b8a8803db1ee621798f97d5e6c023a087dedd27501a269f1a92c563b6cb846",
+          "size": 23687
+        },
+        {
+          "zip": "madVR/legal stuff/super-xbr/license.txt",
+          "path": "drive_c/Cinecore/madVR/legal stuff/super-xbr/license.txt",
+          "sha256": "35c8e5d709a4ebad7a7a2da03942438c73481c7a01a4f74aa643d8e416faf9f6",
+          "size": 1239
+        },
+        {
+          "zip": "madVR/madHcNet32.dll",
+          "path": "drive_c/Cinecore/madVR/madHcNet32.dll",
+          "sha256": "95b538b47e02d0ad2bd15d47efc18695d5e379ef61568b81ef405773d9c199bb",
+          "size": 943472
+        },
+        {
+          "zip": "madVR/madHcNet64.dll",
+          "path": "drive_c/Cinecore/madVR/madHcNet64.dll",
+          "sha256": "597903190c355098f18dd9b83c4d2754d57b95a8272cd29bdc5b30c300a68c4c",
+          "size": 1445840
+        },
+        {
+          "zip": "madVR/madLevelsTweaker.exe",
+          "path": "drive_c/Cinecore/madVR/madLevelsTweaker.exe",
+          "sha256": "f23c8aadd748cdf3fa835dad5a69d2423badf4985091d6a35ddfde6b9a27ce09",
+          "size": 993640
+        },
+        {
+          "zip": "madVR/madTPG.exe",
+          "path": "drive_c/Cinecore/madVR/madTPG.exe",
+          "sha256": "89fcfe2bdb7257faa9b4d2adf103375a2a3263c534b093c842094eb9e297e6c7",
+          "size": 1219808
+        },
+        {
+          "zip": "madVR/madVR.ax",
+          "path": "drive_c/Cinecore/madVR/madVR.ax",
+          "sha256": "edeed42dcfaae84b9d827700862288b9b42066bcb5facadb12175de4ba6c3297",
+          "size": 10262472
+        },
+        {
+          "zip": "madVR/madVR64.ax",
+          "path": "drive_c/Cinecore/madVR/madVR64.ax",
+          "sha256": "9f684ba984344d5f578e1590d7d0a62b6b93386598fdfee6b5ae0aa560bf7164",
+          "size": 10645576
+        },
+        {
+          "zip": "madVR/mvrSettings32.dll",
+          "path": "drive_c/Cinecore/madVR/mvrSettings32.dll",
+          "sha256": "b7d3bc460a17e1b43c9ff09786e44ea4033710538bdb539400b55e5b80d0b338",
+          "size": 1075904
+        },
+        {
+          "zip": "madVR/mvrSettings64.dll",
+          "path": "drive_c/Cinecore/madVR/mvrSettings64.dll",
+          "sha256": "ca139451ba7619d579e6a20433d3b16e2566582de290409fff58ca1fb27551ab",
+          "size": 1607360
+        },
+        {
+          "zip": "madVR/readme.txt",
+          "path": "drive_c/Cinecore/madVR/readme.txt",
+          "sha256": "96b04eaee9365cd9366ed7628cfe6260536c5e48aa7124dd5b7078bb980e15ca",
+          "size": 3537
+        },
+        {
+          "zip": "madVR/restore default settings.bat",
+          "path": "drive_c/Cinecore/madVR/restore default settings.bat",
+          "sha256": "2d45384ea576adeb467ec4147bbd2be141698f5d7900fbd8d8405d45b30b8d3d",
+          "size": 311
+        },
+        {
+          "zip": "madVR/uninstall.bat",
+          "path": "drive_c/Cinecore/madVR/uninstall.bat",
+          "sha256": "27d2d8070445f59d00904f50f763382b66ed39aa953532c526a2db65c525e1f3",
+          "size": 453
+        },
+        {
+          "zip": "madVR/unrar.dll",
+          "path": "drive_c/Cinecore/madVR/unrar.dll",
+          "sha256": "b153bee0965b60be7d528da9d92ce921d7d1d2ed3049a6f0b197ef096dc9717a",
+          "size": 165376
+        }
+      ]
+    },
+    {
+      "name": "MPC Video Renderer",
+      "version": "0.9.7.2387",
+      "url": "https://github.com/Aleksoid1978/VideoRenderer/releases/download/0.9.7/MpcVideoRenderer-0.9.7.2387.zip",
+      "sha256": "15f75c82b9bb1a37d146af350e999f5bf81294f2f32784236dde88094ba2ac73",
+      "size": 803516,
+      "files": [
+        {
+          "zip": "MpcVideoRenderer64.ax",
+          "path": "drive_c/Cinecore/MPCVR/MpcVideoRenderer64.ax",
+          "sha256": "e1842ee4bf0b8c46581e58a93888eef0c0ed3c5e6addb80d8a43f176ef7d1977",
+          "size": 973312
+        }
+      ]
+    },
+    {
+      "name": "LAV Filters",
+      "version": "0.80",
+      "url": "https://github.com/Nevcairiel/LAVFilters/releases/download/0.80/LAVFilters-0.80-x64.zip",
+      "sha256": "c121f087d1d48b6abd38a641a3c5d1e391cd136b9b4ead31c19cd3b098542650",
+      "size": 11856688,
+      "files": [
+        {
+          "zip": "avcodec-lav-62.dll",
+          "path": "drive_c/Cinecore/LAV/avcodec-lav-62.dll",
+          "sha256": "e4185b6bcb843be5e5f805f29afb2d8103b59ad45038974e390bd34cef340111",
+          "size": 16059656
+        },
+        {
+          "zip": "avfilter-lav-11.dll",
+          "path": "drive_c/Cinecore/LAV/avfilter-lav-11.dll",
+          "sha256": "7fce4c47cb97dec24fe3ee6fdb194519c3504b40959650a4486cc543f99fcb9e",
+          "size": 255752
+        },
+        {
+          "zip": "avformat-lav-62.dll",
+          "path": "drive_c/Cinecore/LAV/avformat-lav-62.dll",
+          "sha256": "ccb8e5ce2814a0c6ea0ff5cae3d1dab007dcc82b43d400f840a3bdaf9a9cc2c0",
+          "size": 5622536
+        },
+        {
+          "zip": "avutil-lav-60.dll",
+          "path": "drive_c/Cinecore/LAV/avutil-lav-60.dll",
+          "sha256": "8a56d79f82b2d965ce4b21f191c9e87d06907fd9120deb1cf0baac2d6337ce0b",
+          "size": 1112840
+        },
+        {
+          "zip": "IntelQuickSyncDecoder.dll",
+          "path": "drive_c/Cinecore/LAV/IntelQuickSyncDecoder.dll",
+          "sha256": "b07990c1989309fd62fc9b6641c56e08bb7cfc0607fd84b184c1a48777cba723",
+          "size": 524472
+        },
+        {
+          "zip": "LAVAudio.ax",
+          "path": "drive_c/Cinecore/LAV/LAVAudio.ax",
+          "sha256": "5a118ff76b64a80b970c401bf533838f2ae73de42bc457efd3814b6f9a4a4e73",
+          "size": 346296
+        },
+        {
+          "zip": "LAVFilters.Dependencies.manifest",
+          "path": "drive_c/Cinecore/LAV/LAVFilters.Dependencies.manifest",
+          "sha256": "a1f0031cfd528235d48d78425eef03913ecaadf2ea9e33f27c6416e75510731e",
+          "size": 494
+        },
+        {
+          "zip": "LAVSplitter.ax",
+          "path": "drive_c/Cinecore/LAV/LAVSplitter.ax",
+          "sha256": "ddd01a8ceea503a0e6838a311bb9a26f98c354c4486f37b1c3b3175dda49eb88",
+          "size": 681144
+        },
+        {
+          "zip": "LAVVideo.ax",
+          "path": "drive_c/Cinecore/LAV/LAVVideo.ax",
+          "sha256": "10b546724b44c5f732f68cffa5aad9d4ef9074a4eb018cc787195613049327da",
+          "size": 1294520
+        },
+        {
+          "zip": "libbluray.dll",
+          "path": "drive_c/Cinecore/LAV/libbluray.dll",
+          "sha256": "48c317355af0e53147cd7e5dcf404b0dd6466beded40acb533b8403778d66ad9",
+          "size": 422072
+        },
+        {
+          "zip": "swresample-lav-6.dll",
+          "path": "drive_c/Cinecore/LAV/swresample-lav-6.dll",
+          "sha256": "25a95b8f93eb5ac469f0cef348716602f1eecb98474d0dd3b38b4c242e98dea3",
+          "size": 136968
+        },
+        {
+          "zip": "swscale-lav-9.dll",
+          "path": "drive_c/Cinecore/LAV/swscale-lav-9.dll",
+          "sha256": "e96eb8b5e97d19e2bf3a74867ec2bb49075488f51240129cdb850820c791628e",
+          "size": 806664
+        }
+      ]
+    },
+    {
+      "name": "XySubFilter",
+      "version": "3.1.0.752",
+      "url": "https://github.com/Cyberbeing/xy-VSFilter/releases/download/3.1.0.752/XySubFilter_3.1.0.752_x64.zip",
+      "sha256": "13cae8c9e5ce367e74771a803be6aa821f922e7897e14cff9a1f2529fc185f66",
+      "size": 768492,
+      "files": [
+        {
+          "zip": "XySubFilter.dll",
+          "path": "drive_c/Cinecore/XySubFilter/XySubFilter.dll",
+          "sha256": "09b5a77d842b36729a381577d4dca071ec1ff9439f33dc60290171efe9fd5ecc",
+          "size": 1791488
+        }
+      ]
+    }
+  ],
+  "overlay": [
+    {
+      "path": "MetalSharp-Wine-IOSurface.app/Contents/lib/wine/aarch64-unix/wined3d.so",
+      "sha256": "842c2bfef5cc33b8f26e98e05930e62393d50c5237a99e07fe9e5dd9e7a90110",
+      "size": 79536
+    },
+    {
+      "path": "MetalSharp-Wine-IOSurface.app/Contents/lib/wine/aarch64-unix/winemac.so",
+      "sha256": "6cd7f2834450c363170868e816456bd804bd989aed8b2e594ecaea37c97331f2",
+      "size": 596144
+    },
+    {
+      "path": "MetalSharp-Wine-IOSurface.app/Contents/lib/wine/aarch64-windows/wined3d.dll",
+      "sha256": "86519943626646e2a7fb69d6ddfe9ad00ce35935ac8f2dda3a5231d4552e6a81",
+      "size": 53346304
+    },
+    {
+      "path": "prefix/drive_c/windows/system32/quartz.dll",
+      "sha256": "4ad92c16d3b0c376593cd5ca2d6bbbe4e91d27b8694d32bdaf58cd37cde1f90e",
+      "size": 1966080
+    },
+    {
+      "path": "prefix/drive_c/Cinecore/madVR/settings.bin",
+      "sha256": "150bdc5fc46ac122d448f0d8ff45c029da765a4c4fec0e5a047213ade5d87735",
+      "size": 241741
+    },
+    {
+      "path": "prefix/drive_c/Cinecore/madVR/settings.bak",
+      "sha256": "a950efb15d46d6b56e22ec239bd1296f7011f45a335f6452fa1942c3ace55cda",
+      "size": 84422
+    },
+    {
+      "path": "CinecoreVideoToolbox.dll",
+      "sha256": "908d9f1a8b172dc83fe9c79fcb8b6ddab82b3c0fe0a8bcc77c3b0371e62dadd0",
+      "size": 121680
+    },
+    {
+      "path": "cinecore-settings.reg",
+      "sha256": "e29b054c2151ae6618501c7173a766c73285f93a4139931fb677104e7de29b47",
+      "size": 777529
+    }
+  ],
+  "register": [
+    "drive_c/Cinecore/LAV/LAVSplitter.ax",
+    "drive_c/Cinecore/LAV/LAVVideo.ax",
+    "drive_c/Cinecore/LAV/LAVAudio.ax",
+    "drive_c/Cinecore/madVR/madVR64.ax",
+    "drive_c/Cinecore/MPCVR/MpcVideoRenderer64.ax",
+    "drive_c/Cinecore/XySubFilter/XySubFilter.dll"
+  ],
+  "installedSize": 1500000000
+}

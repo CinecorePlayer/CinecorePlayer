@@ -1,0 +1,45 @@
+--- a/dlls/wined3d/cinecore_mac.m
++++ b/dlls/wined3d/cinecore_mac.m
+@@ -308,8 +308,42 @@
+     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo_draw); CC_CHECK("bind draw");
+     if (scissor) glDisable(GL_SCISSOR_TEST);
+     if (srgb) glDisable(GL_FRAMEBUFFER_SRGB);
++    /* The blit overwrites the whole IOSurface, but OpenGL-on-Metal cannot know: without a clear the render pass
++     * loads the previous contents of the surface from memory first (a full 16-bit frame read for nothing; on this
++     * GPU, in Low Power Mode, memory traffic lowers the GPU frequency). A clear turns the load into "clear".
++     * Measured 12/11: the clear becomes a render pass of its own and the blit still loads (worse): off unless
++     * CINECORE_SURFACE_CLEAR=1. A shader draw right after the clear would merge, see README. */
++    {
++        static int clear_first = -1;
++        if (clear_first < 0) { const char *e = getenv("CINECORE_SURFACE_CLEAR"); clear_first = e && e[0] == '1'; }
++        if (clear_first && params->width == cc_gl[i].width && params->height == cc_gl[i].height)
++        {
++            GLboolean mask[4];
++            glGetBooleanv(GL_COLOR_WRITEMASK, mask);
++            if (!(mask[0] && mask[1] && mask[2] && mask[3])) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
++            glClear(GL_COLOR_BUFFER_BIT);
++            if (!(mask[0] && mask[1] && mask[2] && mask[3])) glColorMask(mask[0], mask[1], mask[2], mask[3]);
++            CC_CHECK("clear");
++        }
++    }
++    /* CINECORE_SURFACE_COPYTEX=1 (test): copy with glCopyTexSubImage2D instead of a framebuffer blit. A blit is a
++     * render pass on the IOSurface that first loads its old contents (a full 16-bit frame read for nothing); a
++     * texture copy should become a plain Metal blit with no load. */
++    {
++        static int copytex = -1;
++        if (copytex < 0) { const char *e = getenv("CINECORE_SURFACE_COPYTEX"); copytex = e && e[0] == '1'; }
++        if (copytex && params->width == cc_gl[i].width && params->height == cc_gl[i].height)
++        {
++            GLint prev_tex;
++            glGetIntegerv(GL_TEXTURE_BINDING_RECTANGLE, &prev_tex);
++            glBindTexture(GL_TEXTURE_RECTANGLE, cc_gl[i].rect);
++            glCopyTexSubImage2D(GL_TEXTURE_RECTANGLE, 0, 0, 0, 0, 0, params->width, params->height); CC_CHECK("copytex");
++            glBindTexture(GL_TEXTURE_RECTANGLE, prev_tex);
++        }
++        else
+     glBlitFramebuffer(0, 0, params->width, params->height, 0, 0, params->width, params->height,
+             GL_COLOR_BUFFER_BIT, GL_NEAREST); CC_CHECK("blit");
++    }
+     if (scissor) glEnable(GL_SCISSOR_TEST);
+     if (srgb) glEnable(GL_FRAMEBUFFER_SRGB);
+     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prev_draw);

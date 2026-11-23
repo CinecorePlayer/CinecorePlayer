@@ -1,0 +1,88 @@
+diff --git a/dlls/winemac.drv/cocoa_opengl.m b/dlls/winemac.drv/cocoa_opengl.m
+index c15aefe..3eca0dc 100644
+--- a/dlls/winemac.drv/cocoa_opengl.m
++++ b/dlls/winemac.drv/cocoa_opengl.m
+@@ -22,6 +22,7 @@
+ #import "macdrv.h"
+ 
+ #import "cocoa_opengl.h"
++#import <objc/message.h>
+ 
+ #include "cocoa_app.h"
+ #include "cocoa_event.h"
+@@ -39,6 +40,22 @@ - (void) wine_updateBackingSize:(const CGSize*)size;
+ @end
+ 
+ 
++/* Modified for Cinecore: the blocks below used to message super, which makes the block retain self.
++ * -[NSOpenGLContext dealloc] calls -clearDrawable, so a context being deallocated was retained by a block that the
++ * main thread released after the object had been freed (rare SEGV in __destroy_helper_block on the main thread).
++ * OnMainThread is synchronous, so the context stays alive while the block runs; capture it unretained. */
++static void wine_super_clear_drawable(NSOpenGLContext *context)
++{
++    struct objc_super sup = { context, [NSOpenGLContext class] };
++    ((void (*)(struct objc_super *, SEL))objc_msgSendSuper)(&sup, @selector(clearDrawable));
++}
++
++static void wine_super_set_view(NSOpenGLContext *context, NSView *view)
++{
++    struct objc_super sup = { context, [NSOpenGLContext class] };
++    ((void (*)(struct objc_super *, SEL, NSView *))objc_msgSendSuper)(&sup, @selector(setView:), view);
++}
++
+ @implementation WineOpenGLContext
+ @dynamic view;
+ @synthesize latentView, needsUpdate, needsReattach;
+@@ -91,10 +108,14 @@ - (void) resetSurfaceIfBackingSizeChanged
+                 [super clearDrawable];
+                 [super setView:save];
+             }
+-            else OnMainThread(^{
+-                [super clearDrawable];
+-                [super setView:save];
+-            });
++            else
++            {
++                __block NSOpenGLContext *context = self; /* not retained (MRC __block) */
++                OnMainThread(^{
++                    wine_super_clear_drawable(context);
++                    wine_super_set_view(context, save);
++                });
++            }
+ #pragma clang diagnostic pop
+         }
+     }
+@@ -139,9 +160,13 @@ - (void) setView:(NSView*)newView
+         NSView* oldView = [self view];
+         if ([NSThread isMainThread])
+             [super setView:newView];
+-        else OnMainThread(^{
+-            [super setView:newView];
+-        });
++        else
++        {
++            __block NSOpenGLContext *context = self; /* not retained (MRC __block) */
++            OnMainThread(^{
++                wine_super_set_view(context, newView);
++            });
++        }
+         [newView retain];
+         [oldView release];
+     }
+@@ -151,9 +176,13 @@ - (void) clearDrawable
+         NSView* oldView = [self view];
+         if ([NSThread isMainThread])
+             [super clearDrawable];
+-        else OnMainThread(^{
+-            [super clearDrawable];
+-        });
++        else
++        {
++            __block NSOpenGLContext *context = self; /* not retained (MRC __block) */
++            OnMainThread(^{
++                wine_super_clear_drawable(context);
++            });
++        }
+         [oldView release];
+ 
+         [self wine_updateBackingSize:NULL];

@@ -1,0 +1,59 @@
+--- a/dlls/winemac.drv/dxmt_export.c
++++ b/dlls/winemac.drv/dxmt_export.c
+@@ -55,6 +55,36 @@
+     pthread_mutex_unlock(&dxmt_mutex);
+ }
+ 
++/* Le nostre superfici non sono nell'elenco che win32u aggiorna (use_window_client_surface non e' esportata): senza
++ * questo la vista Cocoa resta alla misura che la finestra aveva quando DXMT ha creato la swapchain (MPC Video
++ * Renderer la crea su una finestra figlia ancora 0x0 e poi la ingrandisce: video nero). Chiamata da
++ * macdrv_WindowPosChanged: si riallineano le viste della stessa finestra principale; si liberano quelle delle
++ * finestre distrutte. */
++void dxmt_window_pos_changed(HWND hwnd)
++{
++    HWND root = NtUserGetAncestor(hwnd, GA_ROOT);
++    int i;
++
++    pthread_mutex_lock(&dxmt_mutex);
++    for (i = 0; i < MAX_DXMT_SURFACES; i++)
++    {
++        struct macdrv_win_data *data;
++        HWND owner = dxmt_surfaces[i].hwnd;
++        if (!owner) continue;
++        if (!(data = get_win_data(owner)))
++        {
++            client_surface_release(dxmt_surfaces[i].surface);
++            dxmt_surfaces[i].hwnd = NULL;
++            dxmt_surfaces[i].surface = NULL;
++            continue;
++        }
++        release_win_data(data);
++        if (owner == hwnd || NtUserGetAncestor(owner, GA_ROOT) == root)
++            client_surface_present(dxmt_surfaces[i].surface);
++    }
++    pthread_mutex_unlock(&dxmt_mutex);
++}
++
+ static struct macdrv_win_data *dxmt_get_win_data(HWND hwnd)
+ {
+     struct macdrv_win_data *data;
+--- a/dlls/winemac.drv/window.c
++++ b/dlls/winemac.drv/window.c
+@@ -1690,6 +1690,7 @@
+ 
+ done:
+     release_win_data(data);
++    dxmt_window_pos_changed(hwnd);
+ }
+ 
+ 
+--- a/dlls/winemac.drv/macdrv.h
++++ b/dlls/winemac.drv/macdrv.h
+@@ -198,6 +198,7 @@
+ extern BOOL macdrv_GetWindowStyleMasks(HWND hwnd, UINT style, UINT ex_style, UINT *style_mask, UINT *ex_style_mask);
+ extern struct client_surface *macdrv_CreateClientSurface(HWND hwnd, int pixel_format, BOOL raw);
+ extern BOOL macdrv_CreateWindowSurface(HWND hwnd, BOOL layered, const RECT *surface_rect, struct window_surface **surface);
++extern void dxmt_window_pos_changed(HWND hwnd);
+ extern void macdrv_WindowPosChanged(HWND hwnd, HWND insert_after, HWND owner_hint, UINT swp_flags,
+                                     const struct window_rects *new_rects, struct window_surface *surface);
+ extern void macdrv_DestroyCursorIcon(HCURSOR cursor);

@@ -1,0 +1,172 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Cinecore Player per Windows con l'interfaccia Avalonia (la stessa dell'app Mac, mac-native/CinecoreMac).
+       Le parti native del Mac sono sostituite da Platform\*.Win.cs (Win32, WASAPI, DPAPI, CCD); il video lo mostrano
+       il VideoHost nativo (madVR / MPC Video Renderer, senza Wine) o libmpv in una finestra tenuta sotto l'HUD. -->
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);CINECORE_MAC;CINECORE_WINDOWS</DefineConstants>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AssemblyName>CinecorePlayer2026</AssemblyName>
+    <Product>Cinecore Player 2026</Product>
+    <Version>0.4.1</Version>
+    <InformationalVersion>Beta 4.1</InformationalVersion>
+    <RootNamespace>CinecoreMac</RootNamespace>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Release pubblicata gia' compilata in codice macchina (ReadyToRun): niente compilazione JIT al primo uso di
+         ogni schermata, che a ogni avvio e a ogni prima apertura dell'HUD faceva scattare l'interfaccia. -->
+    <PublishReadyToRun Condition="'$(Configuration)' == 'Release'">true</PublishReadyToRun>
+    <PublishDir Condition="'$(Configuration)' == 'Release'">bin\Publish\</PublishDir>
+    <TieredPGO>true</TieredPGO>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <MacSrc>..\..\mac-native\CinecoreMac\</MacSrc>
+    <MacOnlyFiles>$(MacSrc)WindowsShims.cs;$(MacSrc)Keychain.cs;$(MacSrc)LoginItem.cs;$(MacSrc)MacAppIcon.cs;$(MacSrc)MacCursor.cs;$(MacSrc)MacColorPanel.cs;$(MacSrc)MacSpaceGuard.cs;$(MacSrc)MacPower.cs;$(MacSrc)MacHardware.cs;$(MacSrc)MacStorage.cs;$(MacSrc)ProcessLauncher.cs;$(MacSrc)MacTools.cs;$(MacSrc)NativeDiagnostics.cs;$(MacSrc)MacDisplayRate.cs;$(MacSrc)MacFileActions.cs;$(MacSrc)MacImageInfo.cs;$(MacSrc)MacAudioPlayer.cs;$(MacSrc)MacAudioDevices.cs;$(MacSrc)MacGlass.cs;$(MacSrc)MacSurfaceGlass.cs;$(MacSrc)MacWindowChrome.cs;$(MacSrc)MacMediaKeys.cs;$(MacSrc)Program.cs;$(MacSrc)MacEngine.cs</MacOnlyFiles>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Componenti e icone della shell: prima dentro la cartella dei sorgenti (cartella unica Cinecore_Windows), se no
+         due livelli sopra come nella cartella di sviluppo CinecorePlayer2025_beta2. -->
+    <CinecoreRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\..\'))</CinecoreRoot>
+    <ThirdPartiesDir Condition="Exists('$(CinecoreRoot)third-parties\mpv')">$(CinecoreRoot)third-parties\</ThirdPartiesDir>
+    <ThirdPartiesDir Condition="'$(ThirdPartiesDir)' == ''">$(CinecoreRoot)..\..\third-parties\</ThirdPartiesDir>
+    <ShellAssetsDir Condition="Exists('$(CinecoreRoot)Assets\Shell')">$(CinecoreRoot)Assets\Shell\</ShellAssetsDir>
+    <ShellAssetsDir Condition="'$(ShellAssetsDir)' == ''">$(CinecoreRoot)..\..\Assets\Shell\</ShellAssetsDir>
+    <ApplicationIcon>cinecore.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.0" />
+    <!-- Windows: WASAPI (musica, uscite audio) come l'app Windows, segreti con DPAPI. -->
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3719.77" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Sorgenti dell'app Avalonia (condivisi con il Mac); i file solo-Mac sono sostituiti da Platform\\*.cs -->
+    <Compile Include="..\..\mac-native\CinecoreMac\**\*.cs" Exclude="..\..\mac-native\CinecoreMac\bin\**;..\..\mac-native\CinecoreMac\obj\**;$(MacOnlyFiles)" LinkBase="Shared\App" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Nomi delle tracce audio ripuliti come su Windows: lo stesso file. -->
+    <Compile Include="..\..\Utilities\SubtitleNameNormalizer.cs" Link="Shared\SubtitleNameNormalizer.cs" />
+    <Compile Include="..\..\Utilities\AppDataPaths.cs" Link="Shared\AppDataPaths.cs" />
+    <!-- Metadati di film e serie (TMDb), riconoscimento di titolo, anno ed episodi: gli stessi file di Windows. -->
+    <Compile Include="..\..\Utilities\MovieMetadataService*.cs" Link="Shared\%(Filename)%(Extension)" />
+    <!-- Server Jellyfin ed Emby: lo stesso client di Windows. -->
+    <Compile Include="..\..\Utilities\JellyfinClient.cs" Link="Shared\JellyfinClient.cs" />
+    <!-- Punto di ripresa dei file locali ("Continua a guardare"): lo stesso registro di Windows. -->
+    <Compile Include="..\..\Engines\PlaybackResumeStore.cs" Link="Shared\PlaybackResumeStore.cs" />
+    <Compile Include="..\..\Utilities\HiddenLibraryStore.cs" Link="Shared\HiddenLibraryStore.cs" />
+    <Compile Include="..\..\Utilities\MusicTextIdentity.cs" Link="Shared\MusicTextIdentity.cs" />
+    <Compile Include="..\..\Utilities\MusicLyricsService*.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="..\..\Utilities\LyricsSynchronization.cs" Link="Shared\LyricsSynchronization.cs" />
+    <Compile Include="..\..\Utilities\ProviderBackoff.cs" Link="Shared\ProviderBackoff.cs" />
+    <Compile Include="..\..\Utilities\GeniusClient.cs" Link="Shared\GeniusClient.cs" />
+    <Compile Include="..\..\Utilities\GeniusAvailability.cs" Link="Shared\GeniusAvailability.cs" />
+    <Compile Include="..\..\Utilities\LibraryReport.cs" Link="Shared\LibraryReport.cs" />
+    <Compile Include="..\..\Utilities\TraktClient.cs" Link="Shared\TraktClient.cs" />
+    <Compile Include="..\..\Utilities\TraktLibrary.cs" Link="Shared\TraktLibrary.cs" />
+    <Compile Include="..\..\Utilities\MusicScrobbler.cs" Link="Shared\MusicScrobbler.cs" />
+    <Compile Include="..\..\Utilities\MusicListeningStore.cs" Link="Shared\MusicListeningStore.cs" />
+    <Compile Include="..\..\Utilities\ExternalRatingsService.cs" Link="Shared\ExternalRatingsService.cs" />
+    <Compile Include="..\..\Utilities\LastFmSimilar.cs" Link="Shared\LastFmSimilar.cs" />
+    <Compile Include="..\..\Utilities\MusicArtistArtworkService*.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="..\..\Utilities\MusicArtworkService.cs" Link="Shared\MusicArtworkService.cs" />
+    <Compile Include="..\..\Utilities\MusicCatalog.cs" Link="Shared\MusicCatalog.cs" />
+    <Compile Include="..\..\Utilities\SpotifyArtistArtworkService.cs" Link="Shared\SpotifyArtistArtworkService.cs" />
+    <Compile Include="..\..\Utilities\TidalArtistArtworkService.cs" Link="Shared\TidalArtistArtworkService.cs" />
+    <Compile Include="..\..\Utilities\ExternalAudioSynchronization.cs" Link="Shared\ExternalAudioSynchronization.cs" />
+    <Compile Include="..\..\Utilities\AudioTrackAligner.cs" Link="Shared\AudioTrackAligner.cs" />
+    <Compile Include="..\..\Utilities\FasterWhisperLyricsRecognitionBackend.cs" Link="Shared\FasterWhisperLyricsRecognitionBackend.cs" />
+    <Compile Include="..\..\Utilities\MediaFileKinds.cs" Link="Shared\MediaFileKinds.cs" />
+    <Compile Include="..\..\Engines\WatchHistoryStore.cs" Link="Shared\WatchHistoryStore.cs" />
+    <Compile Include="..\..\Utilities\DiaryMediaPolicy.cs" Link="Shared\DiaryMediaPolicy.cs" />
+    <Compile Include="..\..\Utilities\PlaylistStore.cs" Link="Shared\PlaylistStore.cs" />
+    <Compile Include="..\..\Utilities\PlaybackSessionState.cs" Link="Shared\PlaybackSessionState.cs" />
+    <Compile Include="..\..\Utilities\SubtitleSources.cs" Link="Shared\SubtitleSources.cs" />
+    <Compile Include="..\..\Utilities\RemoteServer.cs" Link="Shared\RemoteServer.cs" />
+    <Compile Include="..\..\Utilities\RemoteServer.PageV2.cs" Link="Shared\RemoteServer.PageV2.cs" />
+    <Compile Include="..\..\Utilities\RemoteServer.PageV3.cs" Link="Shared\RemoteServer.PageV3.cs" />
+    <Compile Include="..\..\Utilities\RemoteServer.PageV4.cs" Link="Shared\RemoteServer.PageV4.cs" />
+    <Compile Include="..\..\Utilities\QrCode.cs" Link="Shared\QrCode.cs" />
+    <Compile Include="..\..\Utilities\AmplifierControl.cs" Link="Shared\AmplifierControl.cs" />
+    <Compile Include="..\..\Utilities\AssetIconService.cs" Link="Shared\AssetIconService.cs" />
+    <Compile Include="..\..\Utilities\IntroOutroScanService.cs" Link="Shared\IntroOutroScanService.cs" />
+    <Compile Include="..\..\Utilities\SpanishTexts*.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="..\..\Utilities\ExternalAudioStore.cs" Link="Shared\ExternalAudioStore.cs" />
+    <Compile Include="..\..\Utilities\FilmVolumeStore.cs" Link="Shared\FilmVolumeStore.cs" />
+    <Compile Include="..\..\Utilities\SubtitleFile.cs" Link="Shared\SubtitleFile.cs" />
+    <Compile Include="..\..\Utilities\SubtitleWorkflow.cs" Link="Shared\SubtitleWorkflow.cs" />
+    <Compile Include="..\..\Utilities\SubtitleAligner.cs" Link="Shared\SubtitleAligner.cs" />
+    <Compile Include="..\..\Utilities\SubtitleSyncCheck.cs" Link="Shared\SubtitleSyncCheck.cs" />
+    <Compile Include="..\..\Audio\CinecoreAudioDsp.cs" Link="Shared\Audio\CinecoreAudioDsp.cs" />
+    <Compile Include="..\..\Audio\AutomixAnalyzer.cs" Link="Shared\Audio\AutomixAnalyzer.cs" />
+    <Compile Include="..\..\Audio\AutomixAnalyzer.Beats.cs" Link="Shared\Audio\AutomixAnalyzer.Beats.cs" />
+    <Compile Include="..\..\Audio\AutomixPlanner.cs" Link="Shared\Audio\AutomixPlanner.cs" />
+    <Compile Include="..\..\Audio\AutomixPlanner.Cued.cs" Link="Shared\Audio\AutomixPlanner.Cued.cs" />
+    <Compile Include="..\..\Audio\AutomixPlanner.DjTechniques.cs" Link="Shared\Audio\AutomixPlanner.DjTechniques.cs" />
+    <Compile Include="..\..\Audio\AutomixRules.cs" Link="Shared\Audio\AutomixRules.cs" />
+    <Compile Include="..\..\Audio\AutomixPhaseAligner.cs" Link="Shared\Audio\AutomixPhaseAligner.cs" />
+    <Compile Include="..\..\Audio\ManualMixStore.cs" Link="Shared\Audio\ManualMixStore.cs" />
+    <Compile Include="..\..\Audio\TransitionCurves.cs" Link="Shared\Audio\TransitionCurves.cs" />
+    <Compile Include="..\..\Audio\TransitionCurves.DjTechniques.cs" Link="Shared\Audio\TransitionCurves.DjTechniques.cs" />
+    <Compile Include="..\..\Audio\MusicStructure.cs" Link="Shared\Audio\MusicStructure.cs" />
+    <Compile Include="..\..\Audio\MusicalSections.cs" Link="Shared\Audio\MusicalSections.cs" />
+    <Compile Include="..\..\Audio\KeyDetector.cs" Link="Shared\Audio\KeyDetector.cs" />
+    <Compile Include="..\..\Audio\TransitionShaper.cs" Link="Shared\Audio\TransitionShaper.cs" />
+    <Compile Include="..\..\Audio\TimeStretcher.cs" Link="Shared\Audio\TimeStretcher.cs" />
+    <Compile Include="..\..\Audio\RubberBandStretcher.cs" Link="Shared\Audio\RubberBandStretcher.cs" />
+    <Compile Include="..\..\AudioVideoSync\SyncDetector.cs" Link="Shared\AudioVideoSync\SyncDetector.cs" />
+    <Compile Include="..\..\AudioVideoSync\SyncModels.cs" Link="Shared\AudioVideoSync\SyncModels.cs" />
+    <Compile Include="..\..\AudioVideoSync\ExternalToolLocator.cs" Link="Shared\AudioVideoSync\ExternalToolLocator.cs" />
+    <Compile Include="..\..\AudioVideoSync\FfmpegAudioExtractor.cs" Link="Shared\AudioVideoSync\FfmpegAudioExtractor.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="cinecore.ico" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Icone e caratteri dell'app Windows, identici. -->
+    <Content Include="..\..\Assets\icons\**\*.svg" Link="Assets\icons\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\hud_icons\**\*.svg" Link="Assets\hud_icons\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\Icons.Uniform\*.svg" Link="Assets\Icons.Uniform\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\Icons.Lucide\*.svg" Link="Assets\Icons.Lucide\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\Icons.Custom\*.svg" Link="Assets\Icons.Custom\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\hud_icons_new\**\*.svg" Link="Assets\hud_icons_new\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\Network\*.jpg" Link="Assets\Network\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="$(ShellAssetsDir)*.ico;$(ShellAssetsDir)*.dll" Link="Assets\Shell\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\Assets\HeroPlaceholders\*.jpg" Link="Assets\HeroPlaceholders\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <AvaloniaResource Include="..\..\Assets\Fonts\*.ttf" Link="Assets\Fonts\%(Filename)%(Extension)" />
+    <AvaloniaResource Include="..\..\mac-native\CinecoreMac\Lang\*.tsv" Link="Lang\%(Filename)%(Extension)" />
+    <AvaloniaResource Include="..\..\Splash\*.png" Link="Splash\%(Filename)%(Extension)" />
+  </ItemGroup>
+  <!-- Processi di supporto accanto all'app: VideoHost (madVR / MPC-VR nativi) e rilevatore di sigle (come l'app Windows). -->
+  <ItemGroup>
+    <VideoHostSources Include="..\..\mac-native\VideoHost\*.cs;..\..\mac-native\VideoHost\VideoHost.csproj" />
+    <DetectorSources Include="..\..\IntroOutroDetector\**\*.cs;..\..\IntroOutroDetector\IntroOutroDetector.csproj" Exclude="..\..\IntroOutroDetector\bin\**;..\..\IntroOutroDetector\obj\**" />
+  </ItemGroup>
+  <Target Name="BuildVideoHost" AfterTargets="Build" Inputs="@(VideoHostSources)" Outputs="$(OutDir)VideoHost\VideoHost.exe">
+    <Exec Command="dotnet build &quot;$(MSBuildProjectDirectory)\..\..\mac-native\VideoHost\VideoHost.csproj&quot; -c Release -o &quot;$(OutDir)VideoHost&quot; -nologo -v:q" />
+  </Target>
+  <Target Name="CopyHelpersToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <VideoHostFiles Include="$(OutDir)VideoHost\**\*" />
+      <DetectorFiles Include="$(OutDir)IntroOutroDetector\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(VideoHostFiles)" DestinationFiles="@(VideoHostFiles->'$(PublishDir)VideoHost\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(DetectorFiles)" DestinationFiles="@(DetectorFiles->'$(PublishDir)IntroOutroDetector\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+  <!-- Componenti (madVR, MPC-VR, XySubFilter, mpv, ffmpeg, yt-dlp, libaacs, rubberband) dentro il pacchetto: senza, fuori
+       dalla cartella del progetto l'app ripiegava sul madVR registrato in Windows e i video non si aprivano. -->
+  <Target Name="CopyThirdPartiesToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <ThirdPartyFiles Include="$(ThirdPartiesDir)**\*" Exclude="$(ThirdPartiesDir)stem-runtime\**;$(ThirdPartiesDir)installers\**" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ThirdPartyFiles)" DestinationFiles="@(ThirdPartyFiles->'$(PublishDir)third-parties\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="BuildIntroOutroDetector" AfterTargets="Build" Inputs="@(DetectorSources)" Outputs="$(OutDir)IntroOutroDetector\IntroOutroDetector.exe">
+    <Exec Command="dotnet build &quot;$(MSBuildProjectDirectory)\..\..\IntroOutroDetector\IntroOutroDetector.csproj&quot; -c Release -o &quot;$(OutDir)IntroOutroDetector&quot; -nologo -v:q" />
+  </Target>
+</Project>
+
+
+

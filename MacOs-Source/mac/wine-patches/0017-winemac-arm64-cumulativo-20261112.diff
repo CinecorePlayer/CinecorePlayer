@@ -1,0 +1,365 @@
+diff --git a/dlls/winemac.drv/cocoa_app.m b/dlls/winemac.drv/cocoa_app.m
+index 783f514..8681ca0 100644
+--- a/dlls/winemac.drv/cocoa_app.m
++++ b/dlls/winemac.drv/cocoa_app.m
+@@ -2367,6 +2367,7 @@ - (void)applicationWillResignActive:(NSNotification *)notification
+  * Run-loop-source perform callback.  Pull request blocks from the
+  * array of queued requests and invoke them.
+  */
++extern void cinecore_trace_request(const char *what, void *block);
+ static void PerformRequest(void *info)
+ {
+ @autoreleasepool
+@@ -2392,7 +2393,9 @@ static void PerformRequest(void *info)
+             if (!block)
+                 break;
+ 
++            cinecore_trace_request("run", block);
+             block();
++            cinecore_trace_request("rel", block);
+             [block release];
+         }
+     }
+@@ -2767,3 +2770,25 @@ bool macdrv_is_any_wine_window_visible(void)
+ 
+     return ret;
+ }
++
++
++/* Cinecore: vertical sync of the video layer. The D3D11->Metal layer (DXMT) creates its CAMetalLayer with
++ * displaySyncEnabled = NO: a present reaches the panel as soon as it is issued, in the middle of a scan-out, and
++ * the picture tears (seen with madVR and MPC-VR on 12/11/2026; -presentedTime fell a quarter of a period before the
++ * vsync). Forced to YES for every Metal layer of the process: measured with madVR, every frame lands exactly on a
++ * vsync, one vsync after the requested one, with the same cadence and no dropped frames.
++ * CINECORE_DISPLAY_SYNC=0 restores the old behaviour. */
++#import <QuartzCore/CAMetalLayer.h>
++#import <objc/runtime.h>
++static void (*cinecore_orig_set_sync)(id, SEL, BOOL);
++static void cinecore_hook_set_sync(id self, SEL _cmd, BOOL on) { (void)on; cinecore_orig_set_sync(self, _cmd, YES); }
++__attribute__((constructor)) static void cinecore_display_sync(void)
++{
++    const char *e = getenv("CINECORE_DISPLAY_SYNC"); Method m;
++    if (e && *e == '0') return;
++    m = class_getInstanceMethod([CAMetalLayer class], @selector(setDisplaySyncEnabled:));
++    if (!m) return;
++    cinecore_orig_set_sync = (void (*)(id, SEL, BOOL))method_getImplementation(m);
++    method_setImplementation(m, (IMP)cinecore_hook_set_sync);
++    fprintf(stderr, "cinecore: sincronia verticale del livello video forzata (pid %d)\n", getpid());
++}
+diff --git a/dlls/winemac.drv/cocoa_event.m b/dlls/winemac.drv/cocoa_event.m
+index be5aaa5..14ca173 100644
+--- a/dlls/winemac.drv/cocoa_event.m
++++ b/dlls/winemac.drv/cocoa_event.m
+@@ -502,10 +502,100 @@ - (int) registerHotKey:(UInt32)keyCode modifiers:(UInt32)modifiers vkey:(unsigne
+  *
+  * Run a block on the main thread synchronously.
+  */
++/* Cinecore: traccia facoltativa (CINECORE_WINEMAC_TRACE=file) di chi passa blocchi a OnMainThread, per trovare il
++ * blocco il cui rilascio va in crash sul thread principale (SEGV in __destroy_helper_block, 11/11). */
++#include <dlfcn.h>
++#include <objc/runtime.h>
++#include <pthread.h>
++static FILE *cinecore_trace;
++static pthread_mutex_t cinecore_trace_lock = PTHREAD_MUTEX_INITIALIZER;
++static void cinecore_trace_block(const char *what, void *block, void *caller)
++{
++    static int checked;
++    Dl_info bi = {0}, ci = {0};
++    void *invoke;
++    if (!checked)
++    {
++        const char *path = getenv("CINECORE_WINEMAC_TRACE");
++        checked = 1;
++        if (path && *path)
++        {
++            char name[1024];
++            /* un file per processo: anche explorer e gli altri processi Wine caricano winemac */
++            snprintf(name, sizeof(name), "%s.%d", path, (int)getpid());
++            cinecore_trace = fopen(name, "a");
++        }
++    }
++    if (!cinecore_trace || !block) return;
++    invoke = *(void **)((char *)block + 16); /* Block_layout: isa, flags, reserved, invoke */
++    dladdr(invoke, &bi);
++    dladdr(caller, &ci);
++    pthread_mutex_lock(&cinecore_trace_lock);
++    fprintf(cinecore_trace, "%.3f %s %p blocco=%s chiamante=%s+%ld\n", CFAbsoluteTimeGetCurrent(), what, block,
++            bi.dli_sname ? bi.dli_sname : "?", ci.dli_sname ? ci.dli_sname : "?",
++            ci.dli_saddr ? (long)((char *)caller - (char *)ci.dli_saddr) : 0L);
++    fflush(cinecore_trace);
++    pthread_mutex_unlock(&cinecore_trace_lock);
++}
++
++void cinecore_trace_text(const char *fmt, ...)
++{
++    va_list args;
++    cinecore_trace_block("init", NULL, NULL); /* apre il file alla prima chiamata */
++    if (!cinecore_trace) return;
++    pthread_mutex_lock(&cinecore_trace_lock);
++    fprintf(cinecore_trace, "%.3f ", CFAbsoluteTimeGetCurrent());
++    va_start(args, fmt); vfprintf(cinecore_trace, fmt, args); va_end(args);
++    fputc('\n', cinecore_trace); fflush(cinecore_trace);
++    pthread_mutex_unlock(&cinecore_trace_lock);
++}
++
++/* Cinecore: indirizzi dei blocchi eseguiti sul thread principale; per l'involucro di OnMainThread anche il blocco
++ * annidato (offset 48) con i suoi flag, per riconoscere un uso dopo la liberazione. */
++void cinecore_trace_request(const char *what, void *block)
++{
++    Dl_info bi = {0};
++    void *invoke;
++    cinecore_trace_block("init", NULL, NULL);
++    if (!cinecore_trace || !block) return;
++    invoke = *(void **)((char *)block + 16);
++    dladdr(invoke, &bi);
++    pthread_mutex_lock(&cinecore_trace_lock);
++    if (bi.dli_sname && strstr(bi.dli_sname, "OnMainThread_block_invoke") && !strstr(bi.dli_sname, "Async"))
++    {
++        void *inner = *(void **)((char *)block + 48);
++        Dl_info ii = {0};
++        unsigned int iflags = inner ? *(unsigned int *)((char *)inner + 8) : 0;
++        if (inner) dladdr(*(void **)((char *)inner + 16), &ii);
++        void *obj = NULL;
++        unsigned long rc = 0;
++        const char *cls = "";
++        /* primo oggetto catturato dal blocco interno, se c'e' (es. self in -[WineOpenGLContext clearDrawable]) */
++        if (0) /* dopo la correzione 0012 i blocchi del contesto non contengono piu' l'oggetto */
++        {
++            obj = *(void **)((char *)inner + 32);
++            if (obj && strstr(ii.dli_sname, "WineOpenGLContext"))
++            {
++                rc = (unsigned long)[(id)obj retainCount];
++                cls = object_getClassName((id)obj);
++            }
++        }
++        fprintf(cinecore_trace, "%.3f %s %p flags=%08x avvolge=%p iflags=%08x desc=%p interno=%s obj=%p rc=%lu %s thr=%p\n", CFAbsoluteTimeGetCurrent(), what, block,
++                *(unsigned int *)((char *)block + 8), inner, iflags, inner ? *(void **)((char *)inner + 24) : NULL,
++                ii.dli_sname ? ii.dli_sname : "?", obj, rc, cls, (void *)pthread_self());
++    }
++    else
++        fprintf(cinecore_trace, "%.3f %s %p flags=%08x %s\n", CFAbsoluteTimeGetCurrent(), what, block,
++                *(unsigned int *)((char *)block + 8), bi.dli_sname ? bi.dli_sname : "?");
++    fflush(cinecore_trace);
++    pthread_mutex_unlock(&cinecore_trace_lock);
++}
++
+ void OnMainThread(dispatch_block_t block)
+ {
+ @autoreleasepool
+ {
++    cinecore_trace_block("sync", (__bridge void *)block, __builtin_return_address(0));
+     NSMutableDictionary* threadDict = [[NSThread currentThread] threadDictionary];
+     WineEventQueue* queue = threadDict[WineEventQueueThreadDictionaryKey];
+     dispatch_semaphore_t semaphore = NULL;
+diff --git a/dlls/winemac.drv/cocoa_opengl.m b/dlls/winemac.drv/cocoa_opengl.m
+index c15aefe..a768fed 100644
+--- a/dlls/winemac.drv/cocoa_opengl.m
++++ b/dlls/winemac.drv/cocoa_opengl.m
+@@ -22,6 +22,7 @@
+ #import "macdrv.h"
+ 
+ #import "cocoa_opengl.h"
++#import <objc/message.h>
+ 
+ #include "cocoa_app.h"
+ #include "cocoa_event.h"
+@@ -39,12 +40,31 @@ - (void) wine_updateBackingSize:(const CGSize*)size;
+ @end
+ 
+ 
++extern void cinecore_trace_text(const char *fmt, ...);
++
++/* Cinecore: the blocks below used to message super, which makes the block retain self. -[NSOpenGLContext dealloc]
++ * calls -clearDrawable, so a context being deallocated was retained by a block that the main thread released
++ * after the object had been freed (rare SEGV in __destroy_helper_block on the main thread, found with NSZombie).
++ * OnMainThread is synchronous, so the context stays alive while the block runs; capture it unretained. */
++static void wine_super_clear_drawable(NSOpenGLContext *context)
++{
++    struct objc_super sup = { context, [NSOpenGLContext class] };
++    ((void (*)(struct objc_super *, SEL))objc_msgSendSuper)(&sup, @selector(clearDrawable));
++}
++
++static void wine_super_set_view(NSOpenGLContext *context, NSView *view)
++{
++    struct objc_super sup = { context, [NSOpenGLContext class] };
++    ((void (*)(struct objc_super *, SEL, NSView *))objc_msgSendSuper)(&sup, @selector(setView:), view);
++}
++
+ @implementation WineOpenGLContext
+ @dynamic view;
+ @synthesize latentView, needsUpdate, needsReattach;
+ 
+     - (void) dealloc
+     {
++        cinecore_trace_text("glctx dealloc %p main=%d thr=%p", self, (int)[NSThread isMainThread], (void *)pthread_self());
+         [[self view] release];
+         [latentView release];
+         [super dealloc];
+@@ -91,10 +111,14 @@ - (void) resetSurfaceIfBackingSizeChanged
+                 [super clearDrawable];
+                 [super setView:save];
+             }
+-            else OnMainThread(^{
+-                [super clearDrawable];
+-                [super setView:save];
+-            });
++            else
++            {
++                __block NSOpenGLContext *context = self; /* not retained (MRC __block) */
++                OnMainThread(^{
++                    wine_super_clear_drawable(context);
++                    wine_super_set_view(context, save);
++                });
++            }
+ #pragma clang diagnostic pop
+         }
+     }
+@@ -139,9 +163,13 @@ - (void) setView:(NSView*)newView
+         NSView* oldView = [self view];
+         if ([NSThread isMainThread])
+             [super setView:newView];
+-        else OnMainThread(^{
+-            [super setView:newView];
+-        });
++        else
++        {
++            __block NSOpenGLContext *context = self; /* not retained (MRC __block) */
++            OnMainThread(^{
++                wine_super_set_view(context, newView);
++            });
++        }
+         [newView retain];
+         [oldView release];
+     }
+@@ -149,11 +177,17 @@ - (void) setView:(NSView*)newView
+     - (void) clearDrawable
+     {
+         NSView* oldView = [self view];
++        cinecore_trace_text("glctx clearDrawable %p rc=%lu view=%p main=%d thr=%p", self, (unsigned long)[self retainCount], oldView,
++                            (int)[NSThread isMainThread], (void *)pthread_self());
+         if ([NSThread isMainThread])
+             [super clearDrawable];
+-        else OnMainThread(^{
+-            [super clearDrawable];
+-        });
++        else
++        {
++            __block NSOpenGLContext *context = self; /* not retained (MRC __block) */
++            OnMainThread(^{
++                wine_super_clear_drawable(context);
++            });
++        }
+         [oldView release];
+ 
+         [self wine_updateBackingSize:NULL];
+diff --git a/dlls/winemac.drv/cocoa_window.m b/dlls/winemac.drv/cocoa_window.m
+index 42ec2c3..7461a72 100644
+--- a/dlls/winemac.drv/cocoa_window.m
++++ b/dlls/winemac.drv/cocoa_window.m
+@@ -282,6 +282,7 @@ @interface WineWindow ()
+ @property (readwrite, nonatomic) BOOL preventsAppActivation;
+ @property (readwrite, nonatomic) BOOL floating;
+ @property (readwrite, nonatomic) BOOL drawnSinceShown;
++@property (nonatomic) BOOL cinecoreVideoFullscreen;
+ @property (readwrite, nonatomic) BOOL closing;
+ @property (readwrite, getter=isFakingClose, nonatomic) BOOL fakingClose;
+ @property (retain, nonatomic) NSWindow* latentParentWindow;
+@@ -708,6 +709,15 @@ - (void) didAddSubview:(NSView*)subview
+                 [self invalidateHasGLDescendant];
+         }
+         [super didAddSubview:subview];
++        if ([self.window.title isEqualToString:@"Cinecore Video"] &&
++            [subview.layer isKindOfClass:[CAMetalLayer class]])
++        {
++            CAMetalLayer *layer = (CAMetalLayer *)subview.layer;
++            /* Mullion looks up the display's EDR headroom through the layer's view.
++             * Its layer-hosting view has no delegate by default. */
++            if (!layer.delegate)
++                layer.delegate = subview;
++        }
+     }
+ 
+     - (void) willRemoveSubview:(NSView*)subview
+@@ -892,6 +902,8 @@ - (BOOL) isOpaque
+ @end
+ 
+ 
++extern void cinecore_trace_text(const char *fmt, ...);
++
+ @implementation WineWindow
+ 
+     static WineWindow* causing_becomeKeyWindow;
+@@ -983,6 +995,7 @@ + (WineWindow*) createWindowWithFeatures:(const struct macdrv_window_features*)w
+ 
+     - (void) dealloc
+     {
++        cinecore_trace_text("dealloc win=%p main=%d", self, (int)[NSThread isMainThread]);
+         [[[NSWorkspace sharedWorkspace] notificationCenter] removeObserver:self];
+         [[NSNotificationCenter defaultCenter] removeObserver:self];
+         [queue release];
+@@ -1041,7 +1054,13 @@ - (void) adjustFullScreenBehavior:(NSWindowCollectionBehavior)behavior
+     {
+         NSUInteger style = [self styleMask];
+ 
+-        if (macdrv_cocoa_fullscreen_managed(self) || (behavior & NSWindowCollectionBehaviorParticipatesInCycle &&
++        /* Keep the VideoHost visible in the native Cinecore fullscreen Space. */
++        if ([[self title] isEqualToString:@"Cinecore Video"])
++        {
++            behavior &= ~(NSWindowCollectionBehaviorFullScreenPrimary | NSWindowCollectionBehaviorMoveToActiveSpace);
++            behavior |= NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorFullScreenAuxiliary;
++        }
++        else if (macdrv_cocoa_fullscreen_managed(self) || (behavior & NSWindowCollectionBehaviorParticipatesInCycle &&
+             style & NSWindowStyleMaskResizable && !(style & NSWindowStyleMaskUtilityWindow) && !maximized &&
+             !(self.parentWindow || self.latentParentWindow)))
+         {
+@@ -1130,6 +1149,8 @@ - (BOOL) isOrderedIn
+ 
+     - (NSInteger) minimumLevelForActive:(BOOL)active
+     {
++        if ([[self title] isEqualToString:@"Cinecore Video"])
++            return NSNormalWindowLevel - (self.cinecoreVideoFullscreen ? 1 : 0);
+         NSInteger level;
+ 
+         if (self.floating && (active || topmost_float_inactive == TOPMOST_FLOAT_INACTIVE_ALL ||
+@@ -3195,6 +3216,7 @@ void macdrv_destroy_cocoa_window(WineWindow *window)
+ {
+ @autoreleasepool
+ {
++    cinecore_trace_text("destroy win=%p rc=%lu titolo=%s", window, (unsigned long)[window retainCount], [[window title] UTF8String] ?: "");
+     OnMainThread(^{
+         window.closing = TRUE;
+         [window doOrderOut];
+@@ -3258,7 +3280,33 @@ void macdrv_set_cocoa_window_title(WineWindow *window, const unsigned short* tit
+     else
+         titleString = @"";
+     OnMainThreadAsync(^{
++        NSString *ownerPrefix = @"Cinecore Video owner:";
++        if ([[window title] isEqualToString:@"Cinecore Video"] && [titleString hasPrefix:ownerPrefix])
++        {
++            NSInteger owner = [[titleString substringFromIndex:[ownerPrefix length]] integerValue];
++            /* Cinecore: ":transition" = the native application is changing fullscreen Space; the video window does not
++             * follow that animation (it slides away with the old Space), so it stays invisible until the application
++             * sends the final mode. */
++            BOOL transitioning = [titleString hasSuffix:@":transition"];
++            window.cinecoreVideoFullscreen = transitioning || [titleString hasSuffix:@":fullscreen"];
++            if (transitioning) [window setAlphaValue:0];
++            else if ([window alphaValue] != 1) [window setAlphaValue:1];
++            NSInteger level = [window minimumLevelForActive:[NSApp isActive]];
++            if ([window level] != level) [window setLevel:level];
++            if (!window.cinecoreVideoFullscreen && owner > 0 && [window isOrderedIn])
++                [window orderWindow:NSWindowBelow relativeTo:owner];
++            return;
++        }
++
+         [window setTitle:titleString];
++        if ([titleString isEqualToString:@"Cinecore Video"])
++        {
++            [window setIgnoresMouseEvents:YES];
++            /* Cinecore: no zoom when the video window appears and no fade when it closes (seen as a rectangle
++             * flashing under the loading screen). */
++            [window setAnimationBehavior:NSWindowAnimationBehaviorNone];
++            [window adjustFullScreenBehavior:[window collectionBehavior]];
++        }
+         if ([window isOrderedIn] && ![window isExcludedFromWindowsMenu])
+             [NSApp changeWindowsItem:window title:titleString filename:NO];
+     });

@@ -1,0 +1,347 @@
+Cinecore: spatial audio on headphones and built-in speakers. With --coreaudio-spatial=auto multichannel PCM keeps its layout and goes through AUSpatialMixer (Apple's renderer, personalized HRTF, AirPods head tracking) instead of being downmixed to stereo. HDMI receivers and other speakers are untouched.
+
+--- a/audio/out/ao_coreaudio.c	2026-11-21 18:41:26
++++ b/audio/out/ao_coreaudio.c	2026-11-21 18:43:36
+@@ -21,6 +21,9 @@
+ #include "ao.h"
+ #include "internal.h"
+ #include "audio/format.h"
++#include "audio/chmap.h"
++#include "audio/chmap_sel.h"
++#include "misc/bstr.h"
+ #include "osdep/timer.h"
+ #include "options/m_option.h"
+ #include "common/msg.h"
+@@ -53,8 +56,17 @@
+     dispatch_queue_t queue;
+ 
+     int hotplug_cb_registration_times;
++
++    // Spatial audio (Cinecore): multichannel PCM goes through AUSpatialMixer
++    // (Apple's spatial renderer, head tracking on AirPods) before the output
++    // unit, when the output is headphones or the built-in speakers.
++    int spatial;            // option: 0 = no, 1 = auto, 2 = yes
++    bool head_tracking;     // option
++    AudioUnit mixer;        // non-NULL while spatial rendering is active
+ };
+ 
++enum { SPATIAL_NO, SPATIAL_AUTO, SPATIAL_YES };
++
+ static int64_t ca_get_hardware_latency(struct ao *ao) {
+     struct priv *p = ao->priv;
+ 
+@@ -69,6 +81,15 @@
+             &size);
+     CHECK_CA_ERROR("cannot get audio unit latency");
+ 
++    if (p->mixer) {
++        double mixer_latency_sec = 0.0;
++        size = sizeof(mixer_latency_sec);
++        if (AudioUnitGetProperty(p->mixer, kAudioUnitProperty_Latency,
++                                 kAudioUnitScope_Global, 0, &mixer_latency_sec,
++                                 &size) == noErr)
++            audiounit_latency_sec += mixer_latency_sec;
++    }
++
+     uint64_t audiounit_latency_ns = MP_TIME_S_TO_NS(audiounit_latency_sec);
+     uint64_t device_latency_ns    = ca_get_device_latency_ns(ao, p->device);
+ 
+@@ -99,6 +120,80 @@
+     return noErr;
+ }
+ 
++// Output unit pulls the binaural/speaker mix from the spatial mixer, which in
++// turn pulls the multichannel PCM from render_cb_lpcm.
++static OSStatus render_cb_spatial(void *ctx, AudioUnitRenderActionFlags *aflags,
++                                  const AudioTimeStamp *ts, UInt32 bus,
++                                  UInt32 frames, AudioBufferList *buffer_list)
++{
++    struct ao *ao   = ctx;
++    struct priv *p  = ao->priv;
++    return AudioUnitRender(p->mixer, aflags, ts, 0, frames, buffer_list);
++}
++
++// Which AUSpatialMixer output type fits the device, or 0 for "not spatial".
++static UInt32 spatial_output_type(struct ao *ao)
++{
++    struct priv *p = ao->priv;
++    if (p->spatial == SPATIAL_NO)
++        return 0;
++
++    uint32_t transport = 0;
++    CA_GET(p->device, kAudioDevicePropertyTransportType, &transport);
++
++    UInt32 type = 0;
++    switch (transport) {
++    case kAudioDeviceTransportTypeBluetooth:
++    case kAudioDeviceTransportTypeBluetoothLE:
++        type = kSpatialMixerOutputType_Headphones;
++        break;
++    case kAudioDeviceTransportTypeBuiltIn: {
++        uint32_t source = 0;
++        CA_GET_O(p->device, kAudioDevicePropertyDataSource, &source);
++        type = source == 'hdpn' ? kSpatialMixerOutputType_Headphones
++                                : kSpatialMixerOutputType_BuiltInSpeakers;
++        break;
++    }
++    default:
++        // HDMI receivers, USB DACs, AirPlay...: real speakers, no rendering
++        // unless forced.
++        type = p->spatial == SPATIAL_YES ? kSpatialMixerOutputType_Headphones : 0;
++        break;
++    }
++    char *t = mp_tag_str(transport);
++    MP_VERBOSE(ao, "spatial: transport %s -> output type %u\n", t, (unsigned)type);
++    return type;
++}
++
++// Keep the source layout (5.1, 7.1, 7.1.4, 9.1.6...) instead of the device's
++// stereo layout. Speakers CoreAudio cannot name fall back to 7.1/5.1.
++static bool spatial_init_chmap(struct ao *ao)
++{
++    if (ao->channels.num <= 2)
++        return false;
++    bool mappable = ao->channels.num <= 16;
++    for (int n = 0; mappable && n < ao->channels.num; n++) {
++        int label = mp_speaker_id_to_ca_label(ao->channels.speaker[n]);
++        if (label == -1 || label == kAudioChannelLabel_Unknown)
++            mappable = false;
++    }
++    if (mappable)
++        return true;
++
++    struct mp_chmap_sel sel = {0};
++    mp_chmap_sel_add_map(&sel, &(struct mp_chmap)MP_CHMAP_INIT_STEREO);
++    struct mp_chmap m51, m71;
++    mp_chmap_from_str(&m51, bstr0("5.1"));
++    mp_chmap_from_str(&m71, bstr0("7.1"));
++    mp_chmap_sel_add_map(&sel, &m51);
++    mp_chmap_sel_add_map(&sel, &m71);
++    struct mp_chmap map = ao->channels;
++    if (!ao_chmap_sel_adjust(ao, &sel, &map) || map.num <= 2)
++        return false;
++    ao->channels = map;
++    return true;
++}
++
+ static int get_volume(struct ao *ao, float *vol) {
+     struct priv *p = ao->priv;
+     float auvol;
+@@ -137,6 +232,8 @@
+ }
+ 
+ static bool init_audiounit(struct ao *ao, AudioStreamBasicDescription asbd);
++static bool init_spatial_mixer(struct ao *ao, UInt32 output_type,
++                               AudioStreamBasicDescription *out_asbd);
+ static void init_physical_format(struct ao *ao);
+ static void reinit_latency(struct ao *ao);
+ static bool register_hotplug_cb(struct ao *ao);
+@@ -168,15 +265,30 @@
+     if (!reinit_device(ao))
+         goto coreaudio_error;
+ 
+-    if (p->change_physical_format)
+-        init_physical_format(ao);
++    UInt32 spatial_type = spatial_output_type(ao);
++    struct mp_chmap requested = ao->channels;
++    int requested_format = ao->format;
++    AudioStreamBasicDescription asbd;
++    if (spatial_type && spatial_init_chmap(ao)) {
++        // The mixer wants canonical float, one buffer per channel.
++        ao->format = AF_FORMAT_FLOATP;
++        if (!init_spatial_mixer(ao, spatial_type, &asbd)) {
++            MP_WARN(ao, "spatial: mixer setup failed, plain output\n");
++            ao->channels = requested;
++            ao->format = requested_format;
++        }
++    }
+ 
+-    if (!ca_init_chmap(ao, p->device))
+-        goto coreaudio_error;
++    if (!p->mixer) {
++        if (p->change_physical_format)
++            init_physical_format(ao);
+ 
+-    AudioStreamBasicDescription asbd;
+-    ca_fill_asbd(ao, &asbd);
++        if (!ca_init_chmap(ao, p->device))
++            goto coreaudio_error;
+ 
++        ca_fill_asbd(ao, &asbd);
++    }
++
+     if (!init_audiounit(ao, asbd))
+         goto coreaudio_error;
+ 
+@@ -349,7 +461,7 @@
+     log_default_channel_map(ao);
+ 
+     AURenderCallbackStruct render_cb = (AURenderCallbackStruct) {
+-        .inputProc       = render_cb_lpcm,
++        .inputProc       = p->mixer ? render_cb_spatial : render_cb_lpcm,
+         .inputProcRefCon = ao,
+     };
+ 
+@@ -367,6 +479,125 @@
+     AudioUnitUninitialize(p->audio_unit);
+ coreaudio_error_component:
+     AudioComponentInstanceDispose(p->audio_unit);
++    p->audio_unit = NULL;
++coreaudio_error:
++    return false;
++}
++
++static bool init_spatial_mixer(struct ao *ao, UInt32 output_type,
++                               AudioStreamBasicDescription *out_asbd)
++{
++    struct priv *p = ao->priv;
++    OSStatus err;
++    AudioUnit mixer = NULL;
++
++    AudioComponentDescription desc = {
++        .componentType         = kAudioUnitType_Mixer,
++        .componentSubType      = kAudioUnitSubType_SpatialMixer,
++        .componentManufacturer = kAudioUnitManufacturer_Apple,
++    };
++    AudioComponent comp = AudioComponentFindNext(NULL, &desc);
++    if (!comp) {
++        MP_WARN(ao, "spatial: AUSpatialMixer not available\n");
++        return false;
++    }
++    err = AudioComponentInstanceNew(comp, &mixer);
++    CHECK_CA_ERROR("spatial: cannot open AUSpatialMixer");
++
++    UInt32 one = 1;
++    err = AudioUnitSetProperty(mixer, kAudioUnitProperty_ElementCount,
++                               kAudioUnitScope_Input, 0, &one, sizeof(one));
++    CHECK_CA_ERROR_L(fail, "spatial: cannot set input bus count");
++
++    UInt32 max_frames = 4096;
++    AudioUnitSetProperty(mixer, kAudioUnitProperty_MaximumFramesPerSlice,
++                         kAudioUnitScope_Global, 0, &max_frames, sizeof(max_frames));
++
++    // Input: the source channels with their speaker positions.
++    AudioStreamBasicDescription in_asbd;
++    ca_fill_asbd(ao, &in_asbd);
++    err = AudioUnitSetProperty(mixer, kAudioUnitProperty_StreamFormat,
++                               kAudioUnitScope_Input, 0, &in_asbd, sizeof(in_asbd));
++    CHECK_CA_ERROR_L(fail, "spatial: cannot set input format");
++
++    size_t layout_size = sizeof(AudioChannelLayout)
++                         + (ao->channels.num - 1) * sizeof(AudioChannelDescription);
++    AudioChannelLayout *layout = talloc_zero_size(NULL, layout_size);
++    layout->mChannelLayoutTag = kAudioChannelLayoutTag_UseChannelDescriptions;
++    layout->mNumberChannelDescriptions = ao->channels.num;
++    for (int n = 0; n < ao->channels.num; n++) {
++        layout->mChannelDescriptions[n].mChannelLabel =
++            mp_speaker_id_to_ca_label(ao->channels.speaker[n]);
++        layout->mChannelDescriptions[n].mChannelFlags = kAudioChannelFlags_AllOff;
++    }
++    ca_log_layout(ao, MSGL_V, layout);
++    err = AudioUnitSetProperty(mixer, kAudioUnitProperty_AudioChannelLayout,
++                               kAudioUnitScope_Input, 0, layout, layout_size);
++    talloc_free(layout);
++    CHECK_CA_ERROR_L(fail, "spatial: cannot set input channel layout");
++
++    // Output: stereo float at the source rate (the output unit converts to the
++    // device rate).
++    AudioStreamBasicDescription stereo = in_asbd;
++    stereo.mChannelsPerFrame = 2;
++    err = AudioUnitSetProperty(mixer, kAudioUnitProperty_StreamFormat,
++                               kAudioUnitScope_Output, 0, &stereo, sizeof(stereo));
++    CHECK_CA_ERROR_L(fail, "spatial: cannot set output format");
++    AudioChannelLayout stereo_layout = {
++        .mChannelLayoutTag = kAudioChannelLayoutTag_Stereo,
++    };
++    AudioUnitSetProperty(mixer, kAudioUnitProperty_AudioChannelLayout,
++                         kAudioUnitScope_Output, 0, &stereo_layout, sizeof(stereo_layout));
++
++    UInt32 algorithm = kSpatializationAlgorithm_UseOutputType;
++    err = AudioUnitSetProperty(mixer, kAudioUnitProperty_SpatializationAlgorithm,
++                               kAudioUnitScope_Input, 0, &algorithm, sizeof(algorithm));
++    CHECK_CA_ERROR_L(fail, "spatial: cannot set algorithm");
++
++    UInt32 mode = kSpatialMixerSourceMode_AmbienceBed;
++    err = AudioUnitSetProperty(mixer, kAudioUnitProperty_SpatialMixerSourceMode,
++                               kAudioUnitScope_Input, 0, &mode, sizeof(mode));
++    CHECK_CA_ERROR_L(fail, "spatial: cannot set bed mode");
++
++    err = AudioUnitSetProperty(mixer, kAudioUnitProperty_SpatialMixerOutputType,
++                               kAudioUnitScope_Global, 0, &output_type, sizeof(output_type));
++    CHECK_CA_ERROR_L(fail, "spatial: cannot set output type");
++
++    // A bed is far-field: no distance attenuation or in-head effects.
++    UInt32 flags = 0;
++    AudioUnitSetProperty(mixer, kAudioUnitProperty_SpatialMixerRenderingFlags,
++                         kAudioUnitScope_Input, 0, &flags, sizeof(flags));
++
++    if (output_type == kSpatialMixerOutputType_Headphones) {
++        UInt32 hrtf = kSpatialMixerPersonalizedHRTFMode_Auto;
++        AudioUnitSetProperty(mixer, kAudioUnitProperty_SpatialMixerPersonalizedHRTFMode,
++                             kAudioUnitScope_Global, 0, &hrtf, sizeof(hrtf));
++        UInt32 tracking = p->head_tracking;
++        err = AudioUnitSetProperty(mixer, kAudioUnitProperty_SpatialMixerEnableHeadTracking,
++                                   kAudioUnitScope_Global, 0, &tracking, sizeof(tracking));
++        CHECK_CA_WARN("spatial: head tracking not available");
++    }
++
++    AURenderCallbackStruct cb = {
++        .inputProc       = render_cb_lpcm,
++        .inputProcRefCon = ao,
++    };
++    err = AudioUnitSetProperty(mixer, kAudioUnitProperty_SetRenderCallback,
++                               kAudioUnitScope_Input, 0, &cb, sizeof(cb));
++    CHECK_CA_ERROR_L(fail, "spatial: cannot set mixer render callback");
++
++    err = AudioUnitInitialize(mixer);
++    CHECK_CA_ERROR_L(fail, "spatial: cannot initialize AUSpatialMixer");
++
++    p->mixer = mixer;
++    *out_asbd = stereo;
++    MP_INFO(ao, "spatial: %s rendered for %s%s\n", mp_chmap_to_str(&ao->channels),
++            output_type == kSpatialMixerOutputType_Headphones ? "headphones" : "built-in speakers",
++            output_type == kSpatialMixerOutputType_Headphones && p->head_tracking ? " (head tracking)" : "");
++    return true;
++
++fail:
++    AudioComponentInstanceDispose(mixer);
+ coreaudio_error:
+     return false;
+ }
+@@ -469,6 +700,12 @@
+         AudioComponentInstanceDispose(p->audio_unit);
+     }
+ 
++    if (p->mixer) {
++        AudioUnitUninitialize(p->mixer);
++        AudioComponentInstanceDispose(p->mixer);
++        p->mixer = NULL;
++    }
++
+     if (p->original_asbd.mFormatID) {
+         OSStatus err = CA_SET(p->original_asbd_stream,
+                               kAudioStreamPropertyPhysicalFormat,
+@@ -489,6 +726,8 @@
+     AudioDeviceID old_device = p->device;
+     reinit_device(ao);
+     if (p->audio_unit) {
++        // A new default device (AirPods connected, HDMI receiver unplugged)
++        // also changes whether spatial rendering applies: reload.
+         if (p->device != old_device)
+             ao_request_reload(ao);
+         else
+@@ -591,10 +830,13 @@
+         .sem = (struct coreaudio_cb_sem){
+             .mutex = MP_STATIC_MUTEX_INITIALIZER,
+             .cond = MP_STATIC_COND_INITIALIZER,
+-        }
++        },
++        .head_tracking = true,
+     },
+     .options = (const struct m_option[]){
+         {"change-physical-format", OPT_BOOL(change_physical_format)},
++        {"spatial", OPT_CHOICE(spatial, {"no", SPATIAL_NO}, {"auto", SPATIAL_AUTO}, {"yes", SPATIAL_YES})},
++        {"spatial-head-tracking", OPT_BOOL(head_tracking)},
+         {0}
+     },
+     .options_prefix = "coreaudio",

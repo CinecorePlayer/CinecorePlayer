@@ -1,0 +1,538 @@
+/*
+ * Cinecore (macOS): zero-copy GPU sharing between wined3d (OpenGL) and DXMT (Metal) through IOSurface.
+ *
+ * Metal shared textures (newSharedTextureWithDescriptor) are backed by GPU-private IOSurfaces that OpenGL
+ * cannot bind. For the frames that madVR renders in Direct3D 9 and presents in Direct3D 11, the application
+ * creates a linear 64-bit half-float IOSurface first (cinecore_surface_create); the next shared RGBA16Float
+ * Metal texture of that size is then created on it (method swizzling on the Metal classes), its shared handle
+ * carries the IOSurface mach port and opening it on another MTLDevice gives a texture on the same IOSurface.
+ * On the wined3d CS thread the IOSurface is bound to a rectangle texture (CGLTexImageIOSurface2D) and the
+ * frame is copied there with glBlitFramebuffer: no readback to system memory, no CPU copy.
+ */
+
+#if 0
+#pragma makedep unix
+#endif
+
+#include "config.h"
+
+#if !defined(SONAME_LIBVA) || !defined(SONAME_LIBVA_DRM)
+
+#define GL_SILENCE_DEPRECATION
+#import <Foundation/Foundation.h>
+#import <Metal/Metal.h>
+#import <IOSurface/IOSurface.h>
+#import <OpenGL/OpenGL.h>
+#import <OpenGL/gl3.h>
+#import <objc/runtime.h>
+#include <pthread.h>
+
+/* Self-contained: Wine's Windows headers redefine BOOL and clash with Objective-C. Must match unixlib.h. */
+typedef unsigned int NTSTATUS;
+typedef NTSTATUS (*unixlib_entry_t)(void *args);
+#define STATUS_SUCCESS 0
+#define STATUS_UNSUCCESSFUL 0xC0000001
+enum { unix_cinecore_surface_create = 4, unix_cinecore_surface_blit = 5 };
+struct cinecore_surface_create_params { uint32_t width, height, id; };
+struct cinecore_surface_blit_params { uint32_t id, src_texture, width, height, ok; };
+
+static pthread_mutex_t cc_lock = PTHREAD_MUTEX_INITIALIZER;
+static _Thread_local IOSurfaceRef cc_pending;
+static char cc_key_surface, cc_key_port;
+static Class cc_handle_class;
+static IMP orig_new_shared_desc, orig_new_shared_handle_dev, orig_tex_new_handle, orig_handle_init_port;
+static BOOL cc_swizzled;
+
+static IOSurfaceRef cc_surface_of(id obj)
+{
+    return obj ? (IOSurfaceRef)objc_getAssociatedObject(obj, &cc_key_surface) : NULL;
+}
+
+static void cc_set_surface(id obj, IOSurfaceRef surface)
+{
+    objc_setAssociatedObject(obj, &cc_key_surface, (id)surface, OBJC_ASSOCIATION_RETAIN);
+}
+
+/* -[CinecoreSurfaceHandle createMachPort] */
+static mach_port_t cc_handle_create_port(id self, SEL cmd)
+{
+    IOSurfaceRef s = cc_surface_of(self);
+    return s ? IOSurfaceCreateMachPort(s) : MACH_PORT_NULL;
+}
+
+static id cc_new_surface_handle(IOSurfaceRef s)
+{
+    id h = [[cc_handle_class alloc] init];
+    cc_set_surface(h, s);
+    return h;
+}
+
+static id<MTLTexture> cc_texture_on_surface(id<MTLDevice> dev, IOSurfaceRef s)
+{
+    MTLTextureDescriptor *d = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA16Float
+            width:IOSurfaceGetWidth(s) height:IOSurfaceGetHeight(s) mipmapped:NO];
+    d.usage = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite | MTLTextureUsageRenderTarget;
+    d.storageMode = MTLStorageModeShared;
+    id<MTLTexture> t = [dev newTextureWithDescriptor:d iosurface:s plane:0];
+    if (t) cc_set_surface(t, s);
+    return t;
+}
+
+/* -[MTLDevice newSharedTextureWithDescriptor:] */
+static id cc_new_shared_desc(id self, SEL cmd, MTLTextureDescriptor *desc)
+{
+    IOSurfaceRef s = NULL;
+
+    if (cc_pending && desc.pixelFormat == MTLPixelFormatRGBA16Float
+            && desc.width == IOSurfaceGetWidth(cc_pending) && desc.height == IOSurfaceGetHeight(cc_pending))
+    {
+        s = cc_pending;
+        cc_pending = NULL;
+    }
+    if (s)
+    {
+        id<MTLTexture> t = cc_texture_on_surface(self, s);
+        CFRelease(s);
+        if (t)
+        {
+            fprintf(stderr, "Cinecore: shared Metal texture %lux%lu on IOSurface %u.\n",
+                    (unsigned long)t.width, (unsigned long)t.height, IOSurfaceGetID(cc_surface_of(t)));
+            return t;
+        }
+    }
+    return ((id (*)(id, SEL, MTLTextureDescriptor *))orig_new_shared_desc)(self, cmd, desc);
+}
+
+/* -[MTLTexture newSharedTextureHandle] */
+static id cc_tex_new_handle(id self, SEL cmd)
+{
+    IOSurfaceRef s = cc_surface_of(self);
+    if (s) return cc_new_surface_handle(s);
+    return ((id (*)(id, SEL))orig_tex_new_handle)(self, cmd);
+}
+
+/* -[MTLSharedTextureHandle initWithMachPort:] */
+static id cc_handle_init_port(id self, SEL cmd, mach_port_t port)
+{
+    IOSurfaceRef s = IOSurfaceLookupFromMachPort(port);
+    if (s && IOSurfaceGetWidth(s) > 0 && IOSurfaceGetPixelFormat(s) == 'RGhA')
+    {
+        /* One of ours: a linear IOSurface, not the GPU-private backing of a Metal shared texture. */
+        id h = [[cc_handle_class alloc] init];
+        cc_set_surface(h, s);
+        CFRelease(s);
+        [self release];
+        return h;
+    }
+    if (s) CFRelease(s);
+    return ((id (*)(id, SEL, mach_port_t))orig_handle_init_port)(self, cmd, port);
+}
+
+/* -[MTLDevice newSharedTextureWithHandle:] */
+static id cc_new_shared_handle_dev(id self, SEL cmd, id handle)
+{
+    IOSurfaceRef s = cc_surface_of(handle);
+    if (s)
+    {
+        id<MTLTexture> t = cc_texture_on_surface(self, s);
+        if (t) return t;
+    }
+    return ((id (*)(id, SEL, id))orig_new_shared_handle_dev)(self, cmd, handle);
+}
+
+static BOOL cc_swizzle(Class cls, SEL sel, IMP imp, IMP *orig)
+{
+    Method m = class_getInstanceMethod(cls, sel);
+    if (!m) return FALSE;
+    *orig = method_setImplementation(m, imp);
+    return TRUE;
+}
+
+static BOOL cc_install(void)
+{
+    @autoreleasepool
+    {
+        id<MTLDevice> dev;
+        IOSurfaceRef probe;
+        id<MTLTexture> tex, priv;
+        MTLTextureDescriptor *d;
+        Class base;
+        BOOL ok = TRUE;
+
+        if (cc_swizzled) return TRUE;
+        fprintf(stderr, "Cinecore: install 1\n");
+        if (!(dev = MTLCreateSystemDefaultDevice())) return FALSE;
+        fprintf(stderr, "Cinecore: install 2 dev=%p\n", dev);
+        base = NSClassFromString(@"MTLSharedTextureHandle");
+        if (!base) return FALSE;
+        cc_handle_class = objc_allocateClassPair(base, "CinecoreSurfaceHandle", 0);
+        class_addMethod(cc_handle_class, sel_registerName("createMachPort"), (IMP)cc_handle_create_port, "I@:");
+        objc_registerClassPair(cc_handle_class);
+        fprintf(stderr, "Cinecore: install 3 base=%p cls=%p\n", base, cc_handle_class);
+
+        /* Concrete classes: textures on IOSurface and private shared textures can differ. */
+        probe = IOSurfaceCreate((CFDictionaryRef)@{ (id)kIOSurfaceWidth: @16, (id)kIOSurfaceHeight: @16,
+                (id)kIOSurfaceBytesPerElement: @8, (id)kIOSurfacePixelFormat: @((uint32_t)'RGhA') });
+        d = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA16Float width:16 height:16 mipmapped:NO];
+        d.storageMode = MTLStorageModeShared;
+        tex = [dev newTextureWithDescriptor:d iosurface:probe plane:0];
+        d.storageMode = MTLStorageModePrivate;
+        priv = [dev newSharedTextureWithDescriptor:d];
+        fprintf(stderr, "Cinecore: install 4 probe=%p tex=%p priv=%p\n", probe, tex, priv);
+
+        ok &= cc_swizzle([dev class], @selector(newSharedTextureWithDescriptor:), (IMP)cc_new_shared_desc, &orig_new_shared_desc);
+        ok &= cc_swizzle([dev class], @selector(newSharedTextureWithHandle:), (IMP)cc_new_shared_handle_dev, &orig_new_shared_handle_dev);
+        if (tex) ok &= cc_swizzle([tex class], @selector(newSharedTextureHandle), (IMP)cc_tex_new_handle, &orig_tex_new_handle);
+        if (priv && [priv class] != [tex class])
+        {
+            IMP unused;
+            /* The private class keeps its own implementation; ours only answers for IOSurface textures. */
+            (void)unused;
+        }
+        ok &= cc_swizzle(base, sel_registerName("initWithMachPort:"), (IMP)cc_handle_init_port, &orig_handle_init_port);
+        [tex release]; [priv release]; CFRelease(probe); [dev release];
+        cc_swizzled = ok;
+        fprintf(stderr, "Cinecore: IOSurface sharing hooks %s.\n", ok ? "installed" : "FAILED");
+        return ok;
+    }
+}
+
+static NTSTATUS cinecore_surface_create(void *args)
+{
+    struct cinecore_surface_create_params *params = args;
+    IOSurfaceRef s;
+    size_t bpr;
+
+    params->id = 0;
+    fprintf(stderr, "Cinecore: create %ux%u\n", params->width, params->height);
+    if (!cc_install()) return STATUS_UNSUCCESSFUL;
+    fprintf(stderr, "Cinecore: create after install\n");
+    bpr = IOSurfaceAlignProperty(kIOSurfaceBytesPerRow, (size_t)params->width * 8);
+    s = IOSurfaceCreate((CFDictionaryRef)@{ (id)kIOSurfaceWidth: @(params->width), (id)kIOSurfaceHeight: @(params->height),
+            (id)kIOSurfaceBytesPerElement: @8, (id)kIOSurfaceBytesPerRow: @(bpr),
+            (id)kIOSurfacePixelFormat: @((uint32_t)'RGhA') });
+    if (!s) return STATUS_UNSUCCESSFUL;
+    if (cc_pending) CFRelease(cc_pending);
+    cc_pending = s; /* taken by the next shared RGBA16Float Metal texture of this size, on this thread */
+    params->id = IOSurfaceGetID(s);
+    return STATUS_SUCCESS;
+}
+
+/* GL side, on the thread with wined3d's context current. */
+struct cc_gl_entry { uint32_t id; GLuint rect; uint32_t width, height; };
+static struct cc_gl_entry *cc_gl;
+static unsigned int cc_gl_count;
+/* Framebuffer objects are not shared between GL contexts, and wined3d uses several: one pair per context. */
+struct cc_fbo_entry { CGLContextObj ctx; uint32_t id; GLuint fbo_read, fbo_draw; };
+
+/* CINECORE_SURFACE_DRAW (default on): the copy into the IOSurface is a clear plus a full-screen triangle that reads
+ * the source with texelFetch at the same pixel (16F -> 16F, bit-exact). OpenGL-on-Metal merges the clear into the
+ * draw's render pass (load action "clear"): the blit's render pass loaded the old contents of the surface first,
+ * a whole 16-bit frame read from memory for nothing. Every piece of GL state touched is saved and restored:
+ * wined3d caches its state and must find it unchanged. One program/VAO/sampler per GL context. */
+struct cc_draw_entry { CGLContextObj ctx; GLuint prog, vao, sampler; GLint loc; BOOL failed; };
+static struct cc_draw_entry *cc_draw;
+static unsigned int cc_draw_count;
+
+static GLuint cc_compile(GLenum type, const char *src)
+{
+    GLuint s = glCreateShader(type);
+    GLint ok = 0;
+    glShaderSource(s, 1, &src, NULL);
+    glCompileShader(s);
+    glGetShaderiv(s, GL_COMPILE_STATUS, &ok);
+    if (!ok)
+    {
+        char log[512] = {0};
+        glGetShaderInfoLog(s, sizeof(log) - 1, NULL, log);
+        fprintf(stderr, "Cinecore: copy shader compile failed: %s\n", log);
+        glDeleteShader(s);
+        return 0;
+    }
+    return s;
+}
+
+static struct cc_draw_entry *cc_draw_get(CGLContextObj ctx)
+{
+    static const char *vs = "#version 150\n"
+        "void main() { gl_Position = vec4(gl_VertexID == 1 ? 3.0 : -1.0, gl_VertexID == 2 ? 3.0 : -1.0, 0.0, 1.0); }\n";
+    static const char *fs = "#version 150\n"
+        "uniform sampler2D src; out vec4 color;\n"
+        "void main() { color = texelFetch(src, ivec2(gl_FragCoord.xy), 0); }\n";
+    struct cc_draw_entry *e;
+    unsigned int k;
+    GLuint v, f;
+    GLint ok = 0;
+
+    for (k = 0; k < cc_draw_count; ++k) if (cc_draw[k].ctx == ctx) return cc_draw[k].failed ? NULL : &cc_draw[k];
+    if (!(e = realloc(cc_draw, (cc_draw_count + 1) * sizeof(*e)))) return NULL;
+    cc_draw = e;
+    e = &cc_draw[cc_draw_count++];
+    memset(e, 0, sizeof(*e));
+    e->ctx = ctx;
+    e->failed = TRUE;
+    if (!(v = cc_compile(GL_VERTEX_SHADER, vs))) return NULL;
+    if (!(f = cc_compile(GL_FRAGMENT_SHADER, fs))) { glDeleteShader(v); return NULL; }
+    e->prog = glCreateProgram();
+    glAttachShader(e->prog, v);
+    glAttachShader(e->prog, f);
+    glBindFragDataLocation(e->prog, 0, "color");
+    glLinkProgram(e->prog);
+    glDeleteShader(v);
+    glDeleteShader(f);
+    glGetProgramiv(e->prog, GL_LINK_STATUS, &ok);
+    if (!ok) { fprintf(stderr, "Cinecore: copy program link failed.\n"); glDeleteProgram(e->prog); return NULL; }
+    e->loc = glGetUniformLocation(e->prog, "src");
+    glGenVertexArrays(1, &e->vao);
+    glGenSamplers(1, &e->sampler);
+    glSamplerParameteri(e->sampler, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glSamplerParameteri(e->sampler, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    e->failed = FALSE;
+    fprintf(stderr, "Cinecore: IOSurface copy by draw ready for GL context %p.\n", ctx);
+    return e;
+}
+
+/* Returns FALSE when the draw path could not run (the caller then blits). */
+static BOOL cc_copy_by_draw(CGLContextObj ctx, GLuint src_texture, GLuint fbo_draw, GLsizei width, GLsizei height)
+{
+    static const GLenum caps[] = { GL_BLEND, GL_DEPTH_TEST, GL_STENCIL_TEST, GL_CULL_FACE, GL_SCISSOR_TEST,
+            GL_FRAMEBUFFER_SRGB, GL_RASTERIZER_DISCARD, GL_SAMPLE_ALPHA_TO_COVERAGE, GL_COLOR_LOGIC_OP, GL_MULTISAMPLE,
+            GL_SAMPLE_MASK, GL_POLYGON_OFFSET_FILL, GL_DEPTH_CLAMP,
+            GL_CLIP_DISTANCE0, GL_CLIP_DISTANCE1, GL_CLIP_DISTANCE2, GL_CLIP_DISTANCE3,
+            GL_CLIP_DISTANCE4, GL_CLIP_DISTANCE5, GL_CLIP_DISTANCE6, GL_CLIP_DISTANCE7 };
+    GLboolean was[sizeof(caps) / sizeof(caps[0])], mask[4];
+    GLint prog, vao, active, tex2d, sampler, viewport[4], draw_buffer, polygon[2];
+    GLfloat clear[4];
+    struct cc_draw_entry *e;
+    unsigned int k;
+
+    if (!(e = cc_draw_get(ctx))) return FALSE;
+    /* The source is what wined3d attached to the read framebuffer (the texture name in the parameters is not
+     * always the one holding the frame): only a whole level-0 2D texture of the right size is drawn from. */
+    {
+        static GLuint checked_name;
+        static GLint checked_ok;
+        GLint type = 0, name = 0, level = -1, layer = -1;
+        glGetFramebufferAttachmentParameteriv(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, &type);
+        if (type != GL_TEXTURE) return FALSE;
+        glGetFramebufferAttachmentParameteriv(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &name);
+        glGetFramebufferAttachmentParameteriv(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL, &level);
+        glGetFramebufferAttachmentParameteriv(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LAYER, &layer);
+        if (name <= 0 || level != 0 || layer > 0) return FALSE;
+        if ((GLuint)name != checked_name)
+        {
+            GLint prev = 0, w = 0, h = 0;
+            glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev);
+            while (glGetError() != GL_NO_ERROR);
+            glBindTexture(GL_TEXTURE_2D, name);
+            glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+            glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+            checked_ok = glGetError() == GL_NO_ERROR && w == width && h == height;
+            glBindTexture(GL_TEXTURE_2D, prev);
+            checked_name = name;
+            fprintf(stderr, "Cinecore: copy source texture %d (%dx%d, parameter %u): %s.\n", name, w, h, src_texture,
+                    checked_ok ? "drawn" : "blitted");
+        }
+        if (!checked_ok) return FALSE;
+        src_texture = name;
+    }
+    glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
+    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vao);
+    glGetIntegerv(GL_ACTIVE_TEXTURE, &active);
+    glActiveTexture(GL_TEXTURE0);
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &tex2d);
+    glGetIntegerv(GL_SAMPLER_BINDING, &sampler);
+    glGetIntegerv(GL_VIEWPORT, viewport);
+    glGetIntegerv(GL_POLYGON_MODE, polygon);
+    glGetBooleanv(GL_COLOR_WRITEMASK, mask);
+    glGetFloatv(GL_COLOR_CLEAR_VALUE, clear);
+    for (k = 0; k < sizeof(caps) / sizeof(caps[0]); ++k)
+    {
+        was[k] = glIsEnabled(caps[k]);
+        if (was[k]) glDisable(caps[k]);
+    }
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo_draw);
+    glGetIntegerv(GL_DRAW_BUFFER, &draw_buffer);
+    if (draw_buffer != GL_COLOR_ATTACHMENT0) glDrawBuffer(GL_COLOR_ATTACHMENT0);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    if (polygon[0] != GL_FILL) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glViewport(0, 0, width, height);
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glUseProgram(e->prog);
+    glUniform1i(e->loc, 0);
+    glBindVertexArray(e->vao);
+    glBindTexture(GL_TEXTURE_2D, src_texture);
+    glBindSampler(0, e->sampler);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    /* Restore. */
+    glBindSampler(0, sampler);
+    glBindTexture(GL_TEXTURE_2D, tex2d);
+    glActiveTexture(active);
+    glBindVertexArray(vao);
+    glUseProgram(prog);
+    glClearColor(clear[0], clear[1], clear[2], clear[3]);
+    glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+    if (polygon[0] != GL_FILL) glPolygonMode(GL_FRONT_AND_BACK, polygon[0]);
+    glColorMask(mask[0], mask[1], mask[2], mask[3]);
+    if (draw_buffer != GL_COLOR_ATTACHMENT0) glDrawBuffer(draw_buffer);
+    for (k = 0; k < sizeof(caps) / sizeof(caps[0]); ++k) if (was[k]) glEnable(caps[k]);
+    return TRUE;
+}
+
+static struct cc_fbo_entry *cc_fbo;
+static unsigned int cc_fbo_count;
+
+static NTSTATUS cinecore_surface_blit(void *args)
+{
+    struct cinecore_surface_blit_params *params = args;
+    CGLContextObj ctx = CGLGetCurrentContext();
+    GLint prev_read, prev_draw, prev_rect;
+    GLboolean scissor, srgb;
+    BOOL gl_failed = FALSE;
+    GLuint fbo_read, fbo_draw;
+    unsigned int i;
+
+    params->ok = 0;
+    if (!ctx || !params->id) return STATUS_UNSUCCESSFUL;
+    pthread_mutex_lock(&cc_lock);
+    for (i = 0; i < cc_gl_count && cc_gl[i].id && cc_gl[i].id != params->id; ++i);
+    if (i == cc_gl_count)
+    {
+        struct cc_gl_entry *entries = realloc(cc_gl, (cc_gl_count + 1) * sizeof(*entries));
+        if (!entries) goto failed;
+        cc_gl = entries;
+        memset(&cc_gl[cc_gl_count++], 0, sizeof(*cc_gl));
+    }
+
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prev_read);
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prev_draw);
+    if (!cc_gl[i].id)
+    {
+        IOSurfaceRef s = IOSurfaceLookup(params->id);
+        CGLError err;
+        if (!s) goto failed;
+        glGetIntegerv(GL_TEXTURE_BINDING_RECTANGLE, &prev_rect);
+        glGenTextures(1, &cc_gl[i].rect);
+        glBindTexture(GL_TEXTURE_RECTANGLE, cc_gl[i].rect);
+        err = CGLTexImageIOSurface2D(ctx, GL_TEXTURE_RECTANGLE, GL_RGBA16F, (GLsizei)IOSurfaceGetWidth(s),
+                (GLsizei)IOSurfaceGetHeight(s), GL_RGBA, GL_HALF_FLOAT, s, 0);
+        glBindTexture(GL_TEXTURE_RECTANGLE, prev_rect);
+        cc_gl[i].width = (uint32_t)IOSurfaceGetWidth(s);
+        cc_gl[i].height = (uint32_t)IOSurfaceGetHeight(s);
+        CFRelease(s);
+        if (err != kCGLNoError)
+        {
+            fprintf(stderr, "Cinecore: CGLTexImageIOSurface2D failed, error %d.\n", err);
+            glDeleteTextures(1, &cc_gl[i].rect);
+            goto failed;
+        }
+        cc_gl[i].id = params->id;
+        fprintf(stderr, "Cinecore: IOSurface %u bound to GL texture %u (%ux%u).\n", params->id, cc_gl[i].rect,
+                cc_gl[i].width, cc_gl[i].height);
+    }
+
+    {
+        unsigned int f;
+        for (f = 0; f < cc_fbo_count; ++f)
+        {
+            if (cc_fbo[f].ctx == ctx && cc_fbo[f].id == params->id) break;
+        }
+        if (f == cc_fbo_count)
+        {
+            struct cc_fbo_entry *entries = realloc(cc_fbo, (cc_fbo_count + 1) * sizeof(*entries));
+            if (!entries) goto failed;
+            cc_fbo = entries;
+            memset(&cc_fbo[cc_fbo_count++], 0, sizeof(*cc_fbo));
+            cc_fbo[f].ctx = ctx; cc_fbo[f].id = params->id;
+            glGenFramebuffers(1, &cc_fbo[f].fbo_read);
+            glGenFramebuffers(1, &cc_fbo[f].fbo_draw);
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, cc_fbo[f].fbo_draw);
+            glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, cc_gl[i].rect, 0);
+            if (glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+                fprintf(stderr, "Cinecore: IOSurface framebuffer incomplete %#x.\n", glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER));
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prev_draw);
+        }
+        fbo_read = cc_fbo[f].fbo_read; fbo_draw = cc_fbo[f].fbo_draw;
+    }
+    while (glGetError() != GL_NO_ERROR); /* errors left by wined3d are not ours */
+    scissor = glIsEnabled(GL_SCISSOR_TEST);
+    srgb = glIsEnabled(GL_FRAMEBUFFER_SRGB);
+#define CC_CHECK(what) do { GLenum e_ = glGetError(); static int n_; if (e_) gl_failed = TRUE; if (e_ && n_++ < 3) fprintf(stderr, "Cinecore: %s -> %#x\n", what, e_); } while (0)
+    /* The read framebuffer (madVR's texture) was set up by wined3d itself on the Windows side. */
+    (void)fbo_read;
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo_draw); CC_CHECK("bind draw");
+    if (scissor) glDisable(GL_SCISSOR_TEST);
+    if (srgb) glDisable(GL_FRAMEBUFFER_SRGB);
+    /* The blit overwrites the whole IOSurface, but OpenGL-on-Metal cannot know: without a clear the render pass
+     * loads the previous contents of the surface from memory first (a full 16-bit frame read for nothing; on this
+     * GPU, in Low Power Mode, memory traffic lowers the GPU frequency). A clear turns the load into "clear".
+     * Measured 12/11: the clear becomes a render pass of its own and the blit still loads (worse): off unless
+     * CINECORE_SURFACE_CLEAR=1. A shader draw right after the clear would merge, see README. */
+    {
+        static int clear_first = -1;
+        if (clear_first < 0) { const char *e = getenv("CINECORE_SURFACE_CLEAR"); clear_first = e && e[0] == '1'; }
+        if (clear_first && params->width == cc_gl[i].width && params->height == cc_gl[i].height)
+        {
+            GLboolean mask[4];
+            glGetBooleanv(GL_COLOR_WRITEMASK, mask);
+            if (!(mask[0] && mask[1] && mask[2] && mask[3])) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+            glClear(GL_COLOR_BUFFER_BIT);
+            if (!(mask[0] && mask[1] && mask[2] && mask[3])) glColorMask(mask[0], mask[1], mask[2], mask[3]);
+            CC_CHECK("clear");
+        }
+    }
+    /* CINECORE_SURFACE_COPYTEX=1 (test): copy with glCopyTexSubImage2D instead of a framebuffer blit. A blit is a
+     * render pass on the IOSurface that first loads its old contents (a full 16-bit frame read for nothing); a
+     * texture copy should become a plain Metal blit with no load. */
+    {
+        static int copytex = -1;
+        if (copytex < 0) { const char *e = getenv("CINECORE_SURFACE_COPYTEX"); copytex = e && e[0] == '1'; }
+        static int draw = -1;
+        if (draw < 0) { const char *e = getenv("CINECORE_SURFACE_DRAW"); draw = e && e[0] == '1'; }
+        if (draw && params->width == cc_gl[i].width && params->height == cc_gl[i].height
+                && cc_copy_by_draw(ctx, params->src_texture, fbo_draw, params->width, params->height))
+        {
+            CC_CHECK("draw");
+        }
+        else if (copytex && params->width == cc_gl[i].width && params->height == cc_gl[i].height)
+        {
+            GLint prev_tex;
+            glGetIntegerv(GL_TEXTURE_BINDING_RECTANGLE, &prev_tex);
+            glBindTexture(GL_TEXTURE_RECTANGLE, cc_gl[i].rect);
+            glCopyTexSubImage2D(GL_TEXTURE_RECTANGLE, 0, 0, 0, 0, 0, params->width, params->height); CC_CHECK("copytex");
+            glBindTexture(GL_TEXTURE_RECTANGLE, prev_tex);
+        }
+        else
+    glBlitFramebuffer(0, 0, params->width, params->height, 0, 0, params->width, params->height,
+            GL_COLOR_BUFFER_BIT, GL_NEAREST); CC_CHECK("blit");
+    }
+    if (scissor) glEnable(GL_SCISSOR_TEST);
+    if (srgb) glEnable(GL_FRAMEBUFFER_SRGB);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prev_draw);
+    {
+        GLenum e = glGetError();
+        static int logged;
+        params->ok = !gl_failed && e == GL_NO_ERROR;
+        if (!params->ok && logged++ < 5) fprintf(stderr, "Cinecore: blit GL error %#x.\n", e);
+    }
+    pthread_mutex_unlock(&cc_lock);
+    return STATUS_SUCCESS;
+failed:
+    pthread_mutex_unlock(&cc_lock);
+    return STATUS_UNSUCCESSFUL;
+}
+
+__attribute__((visibility("default"))) const unixlib_entry_t __wine_unix_call_funcs[] =
+{
+    [unix_cinecore_surface_create] = cinecore_surface_create,
+    [unix_cinecore_surface_blit] = cinecore_surface_blit,
+};
+
+__attribute__((visibility("default"))) const unixlib_entry_t __wine_unix_call_wow64_funcs[] =
+{
+    [unix_cinecore_surface_create] = cinecore_surface_create,
+    [unix_cinecore_surface_blit] = cinecore_surface_blit,
+};
+
+#endif

@@ -1,0 +1,38 @@
+--- a/dlls/winemac.drv/cocoa_window.m
++++ b/dlls/winemac.drv/cocoa_window.m
+@@ -1009,7 +1009,15 @@
+     {
+         NSUInteger style = [self styleMask];
+ 
+-        if (behavior & NSWindowCollectionBehaviorParticipatesInCycle &&
++        /* Cinecore draws the controls in a native application, in a separate fullscreen Space.
++         * Its borderless video window must accompany that application instead of remaining
++         * on the desktop. Restrict this to the VideoHost window; Wine dialogs stay ordinary. */
++        if ([[self title] isEqualToString:@"Cinecore Video"])
++        {
++            behavior &= ~(NSWindowCollectionBehaviorFullScreenPrimary | NSWindowCollectionBehaviorMoveToActiveSpace);
++            behavior |= NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorFullScreenAuxiliary;
++        }
++        else if (behavior & NSWindowCollectionBehaviorParticipatesInCycle &&
+             style & NSWindowStyleMaskResizable && !(style & NSWindowStyleMaskUtilityWindow) && !maximized &&
+             !(self.parentWindow || self.latentParentWindow))
+         {
+@@ -1097,6 +1105,9 @@
+ 
+     - (NSInteger) minimumLevelForActive:(BOOL)active
+     {
++        /* The native Cinecore window owns focus and z-order, including fullscreen. */
++        if ([[self title] isEqualToString:@"Cinecore Video"])
++            return NSNormalWindowLevel;
+         NSInteger level;
+ 
+         if (self.floating && (active || topmost_float_inactive == TOPMOST_FLOAT_INACTIVE_ALL ||
+@@ -3177,6 +3188,8 @@
+         titleString = @"";
+     OnMainThreadAsync(^{
+         [window setTitle:titleString];
++        if ([titleString isEqualToString:@"Cinecore Video"])
++            [window adjustFullScreenBehavior:[window collectionBehavior]];
+         if ([window isOrderedIn] && ![window isExcludedFromWindowsMenu])
+             [NSApp changeWindowsItem:window title:titleString filename:NO];
+     });

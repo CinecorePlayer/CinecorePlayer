@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Processo Windows (sotto Wine) che mostra solo il video: madVR / MPC Video Renderer con LAV.
+       L'app nativa macOS lo avvia, lo comanda da stdin e legge lo stato da stdout. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PlatformTarget>x64</PlatformTarget>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <NoWarn>$(NoWarn);WFO1000</NoWarn>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Sotto FEX (Wine ARM64) la ricompilazione in background di .NET riscrive codice durante il film e si blocca
+         su un lock interno di libarm64ecfex.dll: 30-40% delle aperture 4K ferme dopo 1-2 s. Senza livelli: 0 su 24
+         (11/11/2026). Sotto Rosetta non cambia nulla di visibile. -->
+    <TieredCompilation>false</TieredCompilation>
+    <!-- Senza livelli ogni metodo si compila subito ottimizzato, sotto emulazione x86: codice gia' compilato nella DLL.
+         Misurato il 18/11/2026: primo fotogramma di madVR da 3,7-4,1 s a 3,2 s, persi all'avvio da 16 a 8. -->
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <!-- Dichiara Windows 10/11 come la release Windows: senza, MPC-VR vedeva "Windows 8" e RTX Video HDR restava
+         spento. RTX Video HDR va con la presentazione flip (SwapEffect=1, ComponentSettings): con quella "discard"
+         il driver NVIDIA 32.0.16.1714 andava in ricorsione dentro RenderEx (0xC00000FD in nvwgf2umx.dll). -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="DirectShowLib" Version="1.0.0" />
+    <PackageReference Include="Vortice.Direct3D11" Version="3.6.2" />
+  </ItemGroup>
+</Project>

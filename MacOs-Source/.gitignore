@@ -1,0 +1,11 @@
+bin/
+obj/
+.vs/
+*.user
+.DS_Store
+__pycache__/
+*venv*/
+dist/
+*.orig
+*.rej
+*.log

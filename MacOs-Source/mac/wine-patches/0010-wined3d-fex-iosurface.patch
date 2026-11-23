@@ -1,0 +1,59 @@
+--- a/dlls/wined3d/texture_gl.c
++++ b/dlls/wined3d/texture_gl.c
+@@ -2179,11 +2179,10 @@
+             cinecore_mark_done(dst_bo_addr->addr, seq);
+             return TRUE;
+         }
+-        /* wined3d's cached GL state: framebuffer bindings were restored by the Unix side. */
+-        b->fence = GL_EXTCALL(glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0));
+-        gl_info->gl_ops.gl.p_glFlush();
+-        b->dst = dst_bo_addr->addr; b->seq = seq; b->size = 0; b->surface = TRUE;
+-        InterlockedExchange(&b->state, CC_READING);
++        /* With CSMT disabled, finish the GPU write on the producer. The D3D11 consumer must
++         * not call back into the D3D9 device to collect an OpenGL fence while madVR resizes. */
++        gl_info->gl_ops.gl.p_glFinish();
++        cinecore_mark_done(dst_bo_addr->addr, seq);
+         return TRUE;
+     }
+     b->surface = FALSE;
+--- a/dlls/wined3d/cinecore_mac.m
++++ b/dlls/wined3d/cinecore_mac.m
+@@ -37,8 +37,7 @@
+ struct cinecore_surface_blit_params { uint32_t id, src_texture, width, height, ok; };
+ 
+ static pthread_mutex_t cc_lock = PTHREAD_MUTEX_INITIALIZER;
+-static IOSurfaceRef cc_pending;
+-static pthread_t cc_pending_thread; /* only the thread that asked for the surface may take it */
++static _Thread_local IOSurfaceRef cc_pending;
+ static char cc_key_surface, cc_key_port;
+ static Class cc_handle_class;
+ static IMP orig_new_shared_desc, orig_new_shared_handle_dev, orig_tex_new_handle, orig_handle_init_port;
+@@ -84,14 +83,12 @@
+ {
+     IOSurfaceRef s = NULL;
+ 
+-    pthread_mutex_lock(&cc_lock);
+-    if (cc_pending && pthread_equal(cc_pending_thread, pthread_self()) && desc.pixelFormat == MTLPixelFormatRGBA16Float && desc.width == IOSurfaceGetWidth(cc_pending)
+-            && desc.height == IOSurfaceGetHeight(cc_pending))
++    if (cc_pending && desc.pixelFormat == MTLPixelFormatRGBA16Float
++            && desc.width == IOSurfaceGetWidth(cc_pending) && desc.height == IOSurfaceGetHeight(cc_pending))
+     {
+         s = cc_pending;
+         cc_pending = NULL;
+     }
+-    pthread_mutex_unlock(&cc_lock);
+     if (s)
+     {
+         id<MTLTexture> t = cc_texture_on_surface(self, s);
+@@ -215,11 +212,8 @@
+             (id)kIOSurfaceBytesPerElement: @8, (id)kIOSurfaceBytesPerRow: @(bpr),
+             (id)kIOSurfacePixelFormat: @((uint32_t)'RGhA') });
+     if (!s) return STATUS_UNSUCCESSFUL;
+-    pthread_mutex_lock(&cc_lock);
+     if (cc_pending) CFRelease(cc_pending);
+     cc_pending = s; /* taken by the next shared RGBA16Float Metal texture of this size, on this thread */
+-    cc_pending_thread = pthread_self();
+-    pthread_mutex_unlock(&cc_lock);
+     params->id = IOSurfaceGetID(s);
+     return STATUS_SUCCESS;
+ }

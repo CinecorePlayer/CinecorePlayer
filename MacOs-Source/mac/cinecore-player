@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Avvia Cinecore Player (build Windows) dentro Wine su macOS.
+# I file passati come argomento diventano percorsi Windows (Z:\...); URL e opzioni passano cosi' come sono.
+# Se il prefisso non e' pronto (primo avvio, bundle spostato o aggiornato) prima esegue setup-prefix.sh.
+#   CINECORE_RENDERER=MADVR|MPCVR|MPV   forza il renderer      CINECORE_WINE_LOG=1   log di Wine in setup.log
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$HERE/cinecore-env.sh"
+
+needs_setup() {
+  [[ "$(cat "$WINEPREFIX/.cinecore-setup" 2>/dev/null)" != "$CINECORE_SETUP_VERSION" ||
+     "$(cat "$WINEPREFIX/.cinecore-app" 2>/dev/null)" != "$CINECORE_APP" ]]
+}
+if [[ "${1:-}" == "--needs-setup" ]]; then
+  if needs_setup; then exit 1; else exit 0; fi
+fi
+
+[[ -f "$CINECORE_APP/CinecorePlayer2025.exe" ]] || { echo "Cinecore Player non trovato in '$CINECORE_APP'." >&2; exit 1; }
+if needs_setup; then
+  bash "$HERE/setup-prefix.sh" ${CINECORE_SETUP_ARGS:-}
+fi
+
+args=()
+for a in "$@"; do
+  case "$a" in
+    file://*) a="$(/usr/bin/python3 -c 'import sys,urllib.parse;print(urllib.parse.unquote(urllib.parse.urlparse(sys.argv[1]).path))' "$a" 2>/dev/null || echo "${a#file://}")";;
+  esac
+  if [[ -e "$a" ]]; then
+    p="$(cd "$(dirname "$a")" && pwd)/$(basename "$a")"
+    # Z: e' la radice del Mac nel prefisso: la conversione non richiede di avviare Wine.
+    args+=("Z:${p//\//\\}")
+  else
+    args+=("$a")
+  fi
+done
+
+cd "$CINECORE_APP"
+if [[ "${CINECORE_WINE_LOG:-0}" == "1" ]]; then
+  export WINEDEBUG="${WINEDEBUG/#-all/err+all,fixme-all}"
+  exec "$WINE" "$CINECORE_APP/CinecorePlayer2025.exe" ${args[@]+"${args[@]}"} >>"$CINECORE_DATA/wine.log" 2>&1
+fi
+exec "$WINE" "$CINECORE_APP/CinecorePlayer2025.exe" ${args[@]+"${args[@]}"}

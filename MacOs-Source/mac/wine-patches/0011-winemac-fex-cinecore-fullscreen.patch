@@ -1,0 +1,77 @@
+diff --git a/dlls/winemac.drv/cocoa_window.m b/dlls/winemac.drv/cocoa_window.m
+index 42ec2c3..454b620 100644
+--- a/dlls/winemac.drv/cocoa_window.m
++++ b/dlls/winemac.drv/cocoa_window.m
+@@ -282,6 +282,7 @@ @interface WineWindow ()
+ @property (readwrite, nonatomic) BOOL preventsAppActivation;
+ @property (readwrite, nonatomic) BOOL floating;
+ @property (readwrite, nonatomic) BOOL drawnSinceShown;
++@property (nonatomic) BOOL cinecoreVideoFullscreen;
+ @property (readwrite, nonatomic) BOOL closing;
+ @property (readwrite, getter=isFakingClose, nonatomic) BOOL fakingClose;
+ @property (retain, nonatomic) NSWindow* latentParentWindow;
+@@ -708,6 +709,15 @@ - (void) didAddSubview:(NSView*)subview
+                 [self invalidateHasGLDescendant];
+         }
+         [super didAddSubview:subview];
++        if ([self.window.title isEqualToString:@"Cinecore Video"] &&
++            [subview.layer isKindOfClass:[CAMetalLayer class]])
++        {
++            CAMetalLayer *layer = (CAMetalLayer *)subview.layer;
++            /* Mullion looks up the display's EDR headroom through the layer's view.
++             * Its layer-hosting view has no delegate by default. */
++            if (!layer.delegate)
++                layer.delegate = subview;
++        }
+     }
+ 
+     - (void) willRemoveSubview:(NSView*)subview
+@@ -1041,7 +1051,13 @@ - (void) adjustFullScreenBehavior:(NSWindowCollectionBehavior)behavior
+     {
+         NSUInteger style = [self styleMask];
+ 
+-        if (macdrv_cocoa_fullscreen_managed(self) || (behavior & NSWindowCollectionBehaviorParticipatesInCycle &&
++        /* Keep the VideoHost visible in the native Cinecore fullscreen Space. */
++        if ([[self title] isEqualToString:@"Cinecore Video"])
++        {
++            behavior &= ~(NSWindowCollectionBehaviorFullScreenPrimary | NSWindowCollectionBehaviorMoveToActiveSpace);
++            behavior |= NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorFullScreenAuxiliary;
++        }
++        else if (macdrv_cocoa_fullscreen_managed(self) || (behavior & NSWindowCollectionBehaviorParticipatesInCycle &&
+             style & NSWindowStyleMaskResizable && !(style & NSWindowStyleMaskUtilityWindow) && !maximized &&
+             !(self.parentWindow || self.latentParentWindow)))
+         {
+@@ -1130,6 +1146,8 @@ - (BOOL) isOrderedIn
+ 
+     - (NSInteger) minimumLevelForActive:(BOOL)active
+     {
++        if ([[self title] isEqualToString:@"Cinecore Video"])
++            return NSNormalWindowLevel - (self.cinecoreVideoFullscreen ? 1 : 0);
+         NSInteger level;
+ 
+         if (self.floating && (active || topmost_float_inactive == TOPMOST_FLOAT_INACTIVE_ALL ||
+@@ -3258,7 +3276,24 @@ void macdrv_set_cocoa_window_title(WineWindow *window, const unsigned short* tit
+     else
+         titleString = @"";
+     OnMainThreadAsync(^{
++        NSString *ownerPrefix = @"Cinecore Video owner:";
++        if ([[window title] isEqualToString:@"Cinecore Video"] && [titleString hasPrefix:ownerPrefix])
++        {
++            NSInteger owner = [[titleString substringFromIndex:[ownerPrefix length]] integerValue];
++            window.cinecoreVideoFullscreen = [titleString hasSuffix:@":fullscreen"];
++            NSInteger level = [window minimumLevelForActive:[NSApp isActive]];
++            if ([window level] != level) [window setLevel:level];
++            if (!window.cinecoreVideoFullscreen && owner > 0 && [window isOrderedIn])
++                [window orderWindow:NSWindowBelow relativeTo:owner];
++            return;
++        }
++
+         [window setTitle:titleString];
++        if ([titleString isEqualToString:@"Cinecore Video"])
++        {
++            [window setIgnoresMouseEvents:YES];
++            [window adjustFullScreenBehavior:[window collectionBehavior]];
++        }
+         if ([window isOrderedIn] && ![window isExcludedFromWindowsMenu])
+             [NSApp changeWindowsItem:window title:titleString filename:NO];
+     });

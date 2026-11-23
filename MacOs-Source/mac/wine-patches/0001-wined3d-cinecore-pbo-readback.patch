@@ -1,0 +1,98 @@
+--- texture.c.orig	2026-11-06 23:12:08
++++ texture.c	2026-11-06 23:56:41
+@@ -28,6 +28,9 @@
+ 
+ #define WINED3D_TEXTURE_DYNAMIC_MAP_THRESHOLD 50
+ 
++/* Cinecore: destination of the download in progress (CS thread only), see texture_gl.c. */
++struct wined3d_texture *cinecore_download_dst;
++
+ struct wined3d_texture_idx
+ {
+     struct wined3d_texture *texture;
+@@ -59,7 +62,11 @@
+     /* Use a PBO for dynamic textures and read-only staging textures. */
+     return (!(texture->resource.access & WINED3D_RESOURCE_ACCESS_CPU)
+                 && texture->resource.usage & WINED3DUSAGE_DYNAMIC)
+-            || texture->resource.access == (WINED3D_RESOURCE_ACCESS_CPU | WINED3D_RESOURCE_ACCESS_MAP_R);
++            || texture->resource.access == (WINED3D_RESOURCE_ACCESS_CPU | WINED3D_RESOURCE_ACCESS_MAP_R)
++            /* Cinecore (macOS): CPU-only DYNAMIC textures (D3D9 SYSTEMMEM + D3DUSAGE_DYNAMIC without user memory)
++             * used as GetRenderTargetData destinations get a pixel pack buffer, see cinecore_pbo_download(). */
++            || (!(texture->resource.access & WINED3D_RESOURCE_ACCESS_GPU)
++                && texture->resource.usage & WINED3DUSAGE_DYNAMIC);
+ }
+ 
+ /* Front buffer coordinates are always full screen coordinates, but our GL
+@@ -2047,8 +2054,10 @@
+     dst_level = dst_sub_resource_idx % dst_texture->level_count;
+     wined3d_texture_get_pitch(dst_texture, dst_level, &dst_row_pitch, &dst_slice_pitch);
+ 
++    cinecore_download_dst = dst_texture;
+     src_texture->texture_ops->texture_download_data(context, src_texture, src_sub_resource_idx, src_location,
+             &src_box, &data, dst_texture->resource.format, 0, 0, 0, dst_row_pitch, dst_slice_pitch);
++    cinecore_download_dst = NULL;
+ 
+     context_release(context);
+ 
+--- texture_gl.c.orig	2026-11-06 23:18:51
++++ texture_gl.c	2026-11-06 23:56:41
+@@ -1877,7 +1877,48 @@
+ 
+     free(temporary_mem);
+ }
++
++/* Cinecore (macOS): Apple's OpenGL reads textures back into client memory synchronously, stalling the CS thread on
++ * every frame until the GPU is idle (madVR's D3D11 path reads a 16-bit float frame per frame). For CPU-only DYNAMIC
++ * destinations backed by a pixel pack buffer, read with glReadPixels from the source's framebuffer into that
++ * buffer: the CS thread queues the copy and goes on; the application maps the buffer a frame or two later. */
++extern struct wined3d_texture *cinecore_download_dst;
++
++static BOOL cinecore_pbo_download(struct wined3d_context_gl *context_gl, struct wined3d_texture_gl *src_texture_gl,
++        unsigned int src_sub_resource_idx, unsigned int src_location, const struct wined3d_box *src_box,
++        const struct wined3d_bo_address *dst_bo_addr, const struct wined3d_format *dst_format,
++        unsigned int dst_x, unsigned int dst_y, unsigned int dst_z, unsigned int dst_row_pitch)
++{
++    const struct wined3d_gl_info *gl_info = context_gl->gl_info;
++    struct wined3d_texture *dst = cinecore_download_dst, *src = &src_texture_gl->t;
++    const struct wined3d_format_gl *format_gl = wined3d_format_gl(src->resource.format);
++    unsigned int width = wined3d_texture_get_level_width(src, 0), height = wined3d_texture_get_level_height(src, 0);
++    static int logged;
+ 
++    if (!dst || !(dst->resource.usage & WINED3DUSAGE_DYNAMIC) || (dst->resource.access & WINED3D_RESOURCE_ACCESS_GPU)
++            || !dst_bo_addr->buffer_object)
++        return FALSE;
++    if (src_sub_resource_idx || dst_x || dst_y || dst_z || src_box->left || src_box->top
++            || src_box->right != width || src_box->bottom != height
++            || format_gl->f.conv_byte_count || dst_format->id != src->resource.format->id
++            || !(src->resource.bind_flags & WINED3D_BIND_RENDER_TARGET))
++        return FALSE;
++
++    wined3d_context_gl_apply_fbo_state_explicit(context_gl, GL_READ_FRAMEBUFFER,
++            &src->resource, 0, NULL, 0, src_location);
++    gl_info->gl_ops.gl.p_glReadBuffer(GL_COLOR_ATTACHMENT0);
++    wined3d_context_gl_check_fbo_status(context_gl, GL_READ_FRAMEBUFFER);
++    GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, wined3d_bo_gl(dst_bo_addr->buffer_object)->id));
++    gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_ROW_LENGTH, dst_row_pitch / format_gl->f.byte_count);
++    gl_info->gl_ops.gl.p_glReadPixels(0, 0, width, height, format_gl->format, format_gl->type,
++            (uint8_t *)dst_bo_addr->addr + dst_bo_addr->buffer_object->buffer_offset);
++    gl_info->gl_ops.gl.p_glPixelStorei(GL_PACK_ROW_LENGTH, 0);
++    GL_EXTCALL(glBindBuffer(GL_PIXEL_PACK_BUFFER, 0));
++    checkGLcall("Cinecore glReadPixels into PBO");
++    if (!logged++) MESSAGE("Cinecore: PBO readback via glReadPixels %ux%u.\n", width, height);
++    return TRUE;
++}
++
+ static void wined3d_texture_gl_download_data(struct wined3d_context *context,
+         struct wined3d_texture *src_texture, unsigned int src_sub_resource_idx, unsigned int src_location,
+         const struct wined3d_box *src_box, const struct wined3d_bo_address *dst_bo_addr,
+@@ -1900,6 +1941,10 @@
+             context, src_texture, src_sub_resource_idx, wined3d_debug_location(src_location),
+             debug_box(src_box), debug_bo_address(dst_bo_addr), debug_d3dformat(dst_format->id),
+             dst_x, dst_y, dst_z, dst_row_pitch, dst_slice_pitch);
++
++    if (cinecore_download_dst && cinecore_pbo_download(context_gl, src_texture_gl, src_sub_resource_idx, src_location,
++            src_box, dst_bo_addr, dst_format, dst_x, dst_y, dst_z, dst_row_pitch))
++        return;
+ 
+     if (src_location == WINED3D_LOCATION_TEXTURE_SRGB)
+     {

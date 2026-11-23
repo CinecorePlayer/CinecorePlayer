@@ -1,0 +1,7 @@
+<!-- Cinecore: livello del preset, indicatore a lancetta (arco acceso fino alla lancetta, il resto in tenue) -->
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3.77 18.75 A9.5 9.5 0 1 1 21.36 15.65" />
+  <path d="M21.36 15.65 A9.5 9.5 0 0 1 20.23 18.75" stroke-opacity="0.3" />
+  <path d="M12 14 L17.91 15.04" />
+  <circle cx="12" cy="14" r="1" fill="currentColor" />
+</svg>
