@@ -8,8 +8,8 @@
 </p>
 
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-blue.svg)](LICENSE)
-[![Windows](https://img.shields.io/badge/Windows-Beta%204%20(0.4.0)-0078D6?logo=windows&logoColor=white)](https://github.com/CinecorePlayer/CinecorePlayer/releases)
-[![macOS](https://img.shields.io/badge/macOS-Beta%201%20(0.1.0)-000000?logo=apple&logoColor=white)](https://github.com/CinecorePlayer/CinecorePlayer/releases)
+[![Windows](https://img.shields.io/badge/Windows-Beta%204.1%20(0.4.1)-0078D6?logo=windows&logoColor=white)](https://github.com/CinecorePlayer/CinecorePlayer/releases)
+[![macOS](https://img.shields.io/badge/macOS-Beta%201.1%20(0.1.1)-000000?logo=apple&logoColor=white)](https://github.com/CinecorePlayer/CinecorePlayer/releases)
 [![.NET 9.0](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![Avalonia](https://img.shields.io/badge/UI-Avalonia-8B44AC)](https://avaloniaui.net/)
 [![Status](https://img.shields.io/badge/status-beta-orange)](#-known-limitations)
@@ -35,6 +35,7 @@ Built in C# / .NET 9 with one shared Avalonia interface on both systems. Free, n
 - [How it works](#-how-it-works)
 - [Building from source](#-building-from-source)
 - [Bug reports](#-bug-reports--feedback)
+- [Security](#-security)
 - [License](#-license)
 
 ---
@@ -43,9 +44,9 @@ Built in C# / .NET 9 with one shared Avalonia interface on both systems. Free, n
 
 All builds are on the [Releases page](https://github.com/CinecorePlayer/CinecorePlayer/releases).
 
-### Windows — Beta 4 (0.4.0)
+### Windows — Beta 4.1 (0.4.1)
 
-Download the installer from the release tagged `beta-v0.4.0-Avalonia-Windows` and run it.
+Download `CinecorePlayer2026-Beta4.1-Windows-Setup.exe` from the release tagged `beta-v0.4.1-Avalonia-Windows` and run it. What's new is in the release notes.
 
 - Includes the .NET runtime, libmpv, FFmpeg, yt-dlp, madVR, MPC Video Renderer, XySubFilter, libaacs and Rubber Band: nothing else to install first.
 - Optional components, selectable one by one: LAV Filters, MPC Audio Decoder, MPC Audio Renderer (with their original installers).
@@ -53,13 +54,13 @@ Download the installer from the release tagged `beta-v0.4.0-Avalonia-Windows` an
 - Administrator approval is needed for Program Files and filter registration. Some bundled third-party installers are unsigned.
 - Updates itself from GitHub, verifying the SHA-256 before installing (Beta 3 and later; older betas need one manual install).
 
-### macOS — Beta 1 (0.1.0)
+### macOS — Beta 1.1 (0.1.1)
 
-Download the DMG or `CinecorePlayer-Mac-0.1.0-arm64.zip` from the release tagged `beta-v0.1.0-Avalonia-MacOs` and move **Cinecore Player** to *Applications*.
+Download `CinecorePlayer2026-Mac-0.1.1-arm64.dmg` from the release tagged `beta-v0.1.1-Avalonia-MacOs` and move **Cinecore Player** to *Applications*. What's new is in the release notes. Each file has its SHA-256 in the release notes and in a `.sha256` file next to it; `CinecorePlayer-Mac-0.1.1-arm64.zip` is the same app, used by the built-in updater.
 
 - **Not notarized:** the first time, right-click › *Open*, or allow it in *System Settings › Privacy & Security*.
 - Everything for mpv, music, photos, streaming and discs is inside the app.
-- **madVR / MPC Video Renderer** need the optional **Windows engine** (Wine for ARM64 + the renderers and filters). The app offers it the first time you pick one of those renderers: about 1.4 GB to download, 6.8 GB installed, every file checked against a SHA-256 built into the app. Without it, everything plays with mpv.
+- **madVR / MPC Video Renderer** need the optional **Windows engine** (Wine for ARM64 + the renderers and filters). The app offers it the first time you pick one of those renderers: about 1.4 GB to download and about 1.6 GB installed, downloaded from the official sites, every file checked against a SHA-256 built into the app. Without it, everything plays with mpv.
 - Updates itself from GitHub Releases, with SHA-256 check.
 
 ---
@@ -70,7 +71,7 @@ Download the DMG or `CinecorePlayer-Mac-0.1.0-arm64.zip` from the release tagged
 |---|---|---|
 | System | Windows 10 2004 or later / Windows 11, x64 | macOS 13 Ventura or later, **Apple Silicon** (M1+). Intel Macs not supported |
 | Runtime | Included | Included |
-| Disk | — | +6.8 GB for the optional Windows engine |
+| Disk | — | +1.6 GB for the optional Windows engine |
 | Metadata | Your own free TMDb key | Your own free TMDb key |
 | Protected Blu-rays | MakeMKV or your own `KEYDB.cfg` | MakeMKV or your own `KEYDB.cfg` |
 | Lyrics sync (optional) | Python + faster-whisper | Python + faster-whisper |
@@ -91,19 +92,24 @@ Advanced video features depend on the renderer, the GPU and the display.
 | **MPC Video Renderer** | Light and modern; stable in power-saving mode. On Windows: **RTX Video Super Resolution** and **RTX Video HDR** (NVIDIA RTX) |
 | **mpv** | Universal, fastest to open, lowest power; used for YouTube and network streams |
 
-Each engine has its own settings pages inside Cinecore (madVR, MPC-VR, LAV, XySubFilter, mpv), so you never need the original control panels.
+Each engine has its own settings pages inside Cinecore (madVR, including *Performance* with the DXVA and 3DLUT trade-offs, MPC-VR, LAV, XySubFilter, mpv), so you never need the original control panels.
 
+- **Renderer presets** (right-click › *Video › Presets*):
+  - **Automatic** (default): picks the renderer settings for each film from the GPU, the file's resolution, bitrate and codec, the frame rate, the window size and Low Power Mode, and shows in grey what it chose
+  - **Custom**: your own automations, e.g. *"film is 4K and the PC is on battery → madVR: High"*
+  - Ready-made **Low, Medium, High, Ultra** and **DVD & low quality** for madVR, MPC-VR and mpv; picking one restarts the film from the same point and never touches your saved Settings
+- **0 dropped frames at start and after seeking** with all three engines; if madVR keeps dropping frames on a GPU that's too weak, the player offers to switch to mpv or MPC-VR — never on its own
 - **Formats:** MKV, MP4, M2TS, TS, MOV, AVI, WMV, WebM and everything LAV and mpv read; YouTube and other sites through yt-dlp, with a resolution limit from 144p to 8K
 - **Refresh-rate switching** before the film starts, with exact rational rates (23.976 stays 23.976), also on projectors and external displays; restored on exit
 - **HDR:** passthrough (EDR on Mac displays), HDR→SDR with shaders or a 3DLUT, madVR HDR profiles
 - **3D:** Side-by-Side / Top-Bottom detected automatically; keep both eyes for a 3D projector or show one
 - **Image sizing:** constant height, constant area or custom; real aspect ratio measured live (IMAX scenes expand), crop to 4:3 … 2.76
 - **Discs:** DVD with real menus on every engine (also from the phone remote), Blu-ray / ISO main title, audio CDs; *Resume / Start over* like a disc player
-- **Controls:** timeline with frame previews and chapters, fast scan ×0.5–×4, frame step (`,` `.`), PiP, volume above 100% (+12 dB) with per-film memory
+- **Controls:** timeline with frame previews and chapters, fast scan ×0.5–×4, frame step (`,` `.`), volume above 100% (+12 dB) with per-film memory
 - **Skip Intro / Next episode,** detected offline by comparing audio fingerprints across a season's episodes
 - **Stream quality switch** for YouTube, DLNA and Jellyfin, reloaded in place from the same point
 - **Info panel:** source, decoder, live video/audio bitrate (also YouTube and DLNA), dropped frames
-- **HDR analysis:** declared metadata (mastering, MaxCLL/MaxFALL, Dolby Vision, HDR10+), full-film measurement (peak/average nits, percentiles, Rec.709/P3/BT.2020 gamut), live scopes (waveform, vectorscope, CIE 1931, false colour); export to HTML, PNG, CSV, JSON
+- **HDR analysis:** declared metadata (mastering, MaxCLL/MaxFALL, Dolby Vision, HDR10+), full-film measurement (peak/average nits, percentiles, Rec.709/P3/BT.2020 gamut), live scopes at 24 measurements/s on Windows (waveform, vectorscope, CIE 1931, false colour); export to HTML, PNG, CSV, JSON
 
 <p align="center">
   <img src="Screenshots/dvd-menu.webp" alt="A DVD playing with its own original menu (The LEGO Movie 2)"><br>
@@ -122,7 +128,7 @@ Each engine has its own settings pages inside Cinecore (madVR, MPC-VR, LAV, XySu
 
 ### 🔊 Audio & subtitles
 
-- **Bitstream** chosen track by track (details per platform in [Windows vs macOS](#-windows-vs-macos)); output device or *Auto / Force PCM* can change mid-film without restarting the video
+- **Bitstream** chosen track by track (details per platform in [Windows vs macOS](#-windows-vs-macos)); output device or *Auto / Force PCM* can change mid-film without restarting the video. On Windows, **MPC Audio Renderer** is used when installed, with automatic bitstreaming
 - **Audio delay** on the fly (`Ctrl ±`), saved per film; fixed or **curved** delay for rips that drift
 - **Automatic alignment** of an external audio track (e.g. a dub from another source), with 24 / 23.976 / 25 fps speed conversion
 - **Network AV receiver control:** Denon/Marantz, Yamaha MusicCast, Onkyo/Integra/Pioneer, NAD, Anthem, UPnP. Hard-coded safety rules: reads the volume before each change, max +3 dB per step, ceiling at −20 dB, a film can only *lower* the volume at start
@@ -134,12 +140,12 @@ The **Cinecore Audio Engine**: FFmpeg decoding, double-precision DSP, output thr
 
 - **DSP:** 10/31-band or parametric EQ with a graph editor, ReplayGain (track/album), crossfeed, stereo width, balance, mono, loudness compensation / dynamic AutoEQ, true-peak limiter
 - **Gapless** (also in exclusive mode) and **crossfade** (3/6/10 s, skipped between tracks of the same album)
-- **Automix:** beat grids, phrase boundaries, key and vocal activity pick the cue points and the transition; tempo matched with Rubber Band without changing pitch, then eased back. *Sort queue for mix* by tempo, key and energy
-- **Manual mix editor:** both waveforms with beat markers, cue points, tempo and effects; a saved transition is reused every time those two tracks play in that order
+- **Automix:** beat grids, phrase boundaries, key and vocal activity pick the cue points and the transition; tempo matched with Rubber Band without changing pitch, then eased back. A **Crossfade only** style, and no club effects (echo, tape stop) on soundtracks, piano and music that isn't for dancing. *Sort queue for mix* by tempo, key and energy
+- **Manual mix editor:** both waveforms with beat markers, cue points, tempo and effects; **draw the volume, filter and effect curves by hand**; the incoming track follows the outgoing tempo so beats stay locked. A saved transition is reused every time those two tracks play in that order
 - **Radio:** when the queue ends, it continues with similar tracks from *your* library — offline, no external service
-- **Lyrics:** LRCLIB, Genius, lyrics.ovh; unsynced lyrics aligned to the vocals with faster-whisper
+- **Lyrics:** LRCLIB, Genius, lyrics.ovh; unsynced lyrics aligned to the vocals with faster-whisper. If Genius asks for a check, *Tools › Genius: verify connection…* opens a window for it, and it stays valid across restarts
 - **Library:** rotating artist banner, Continue listening, artist photos and covers (Spotify, TIDAL, Deezer), `.wpl` playlists, audio CDs via MusicBrainz
-- **Meters:** spectrum, spectrogram, waveform, LUFS, stereo, levels and VU with PEAK/CLIP
+- **Meters:** spectrum, spectrogram, waveform, LUFS, stereo, levels and VU with PEAK/CLIP; true peak measured over the whole track, with steadier readouts
 - Full-screen track view, **mini player**, Last.fm and ListenBrainz scrobbling (queued offline)
 
 <p align="center">
@@ -165,7 +171,7 @@ The **Cinecore Audio Engine**: FFmpeg decoding, double-precision DSP, output thr
 ### 📚 Library & network
 
 - **Sections:** Home (rotating hero), Movies, TV Series, Music, Photos, Videos, Playlists, Network, Favourites, Diary; global search
-- **TMDb metadata** in your language: posters, backdrops, plots, cast, episodes; manual *Fix title and cover*
+- **TMDb metadata** in the app's language (English, Italian, Spanish): posters, backdrops, plots, cast, episodes; changing language updates titles and plots without losing covers or manual fixes; manual *Fix title and cover*
 - **Title pages:** overview, file technical details, reviews and ratings (TMDb, IMDb, Letterboxd, Metacritic), cast
 - **Filters and collections** by genre, year, decade, director, artist, folder; quick picks (Lossless, Atmos, Rated)
 - **Library report:** duplicates, low bitrate, inconsistent HDR metadata, broken files
@@ -224,9 +230,10 @@ Viewer with filmstrip, zoom, Info panel (camera, exposure, place in Maps) and sl
 
 ### 🧩 System integration
 
-- Light, dark or system theme, accent colour; **English, Italian, Spanish**
-- Media keys and system *Now Playing* / SMTC, Share sheet, *Open with*, drag and drop, single instance
-- **Power saving:** in Low Power Mode / Battery Saver the player offers a lighter renderer than madVR for the session — it never switches on its own
+- Light, dark or system theme, accent colour (picker with typed or pasted hex code); **English, Italian, Spanish**, translated down to menus and track names
+- Media keys and system *Now Playing* / SMTC, Share sheet, *Open with* (files open straight away, without the startup screen), drag and drop, single instance
+- **Power saving:** in Low Power Mode / Battery Saver the player offers a lighter renderer than madVR for the session (or *Don't show again*) — it never switches on its own; with a preset active, the presets handle it
+- **Light on resources:** about 2.4% CPU at idle on Windows; the interface only redraws what changes
 - **Shortcuts:** `Space` play/pause · `←` `→` ±10 s · `,` `.` frame step · `↑` `↓` volume · `F` fullscreen · `Z` sizing · `Ctrl ±` audio delay · `S` back to library · `Esc` back
 
 <p align="center">
@@ -242,13 +249,14 @@ Same interface and features; these are the differences.
 
 | | Windows | macOS |
 |---|---|---|
-| mpv | Native | Native, VideoToolbox decoding |
+| mpv | Native, NVDEC on NVIDIA | Native, VideoToolbox decoding |
 | madVR / MPC-VR | Native (DirectShow) | Through the optional Wine ARM64 engine, presented on Metal at the display's vsync |
 | RTX Video Super Resolution / HDR | ✅ (MPC-VR, NVIDIA RTX) | ❌ |
 | Bitstream: Dolby Digital / DD+ (Atmos), DTS core | ✅ | ✅ |
 | Bitstream: TrueHD, DTS-HD MA, DTS:X | ✅ | TrueHD only with an HDMI adapter carrying HBR; DTS-HD MA / DTS:X decoded to multichannel PCM |
 | Music output | WASAPI shared / exclusive | Core Audio shared / exclusive (hog mode) |
-| Glass | Windows acrylic / DWM | **Liquid Glass** on macOS 26+, real blur on earlier versions |
+| Picture in Picture | Music mini player only | Music mini player only |
+| Glass | Windows acrylic / DWM (also live in the music bar, Photos and menus) | **Liquid Glass** on macOS 26+, real blur on earlier versions |
 | Remote address | Also a `….local` name, no port needed | IP + port 9234 |
 
 ---
@@ -262,13 +270,15 @@ Same interface and features; these are the differences.
 - Jellyfin tested with 10.11, Emby with 4.10; DLNA depends on the server
 - Subtitles, ratings, metadata and lyrics depend on third-party services
 - Lyrics sync needs Python with faster-whisper installed separately
+- No video Picture in Picture (removed: it froze with madVR); the music mini player stays
 
 **Windows**
 - A 4K YouTube video still takes 20–25 s to open (about half is yt-dlp)
 - With madVR the screen can go black for a moment while the renderer initialises
-- PiP shows the video without glass behind it
+- The *Automatic* preset is tuned on a small set of measurements (RTX 3080): on very different GPUs it may be too cautious or too heavy. Use *Custom* or pick a preset by hand, and please share the `[preset] automatico: …` log lines
 
 **macOS**
+- The *Automatic* preset is tuned on an M4 MacBook Air: Low Power Mode limits are measured, full-power limits are estimates. Other Macs may get a level that is too cautious or too heavy; please share the `[preset] automatico: …` log lines
 - Apple Silicon only; not notarized (ad-hoc signed)
 - madVR / MPC-VR under Wine use more energy than mpv
 - In Low Power Mode, madVR's heaviest presets can't keep up on 4K 16:9 films; the player offers MPC-VR or mpv
@@ -289,8 +299,8 @@ Same interface and features; these are the differences.
 
 | Data | Windows | macOS |
 |---|---|---|
-| Settings, library, playlists | `%APPDATA%\Cinecore` | `~/Library/Application Support/Cinecore` |
-| Cache and logs | `%LOCALAPPDATA%\Cinecore` | same folder as above |
+| Settings, library, playlists | `%APPDATA%\Cinecore` | `~/Library/Application Support/Cinecore` (settings), `~/Library/Application Support/CinecorePlayer2025` (library, playlists, history) |
+| Cache and logs | `%LOCALAPPDATA%\Cinecore` | `~/Library/Application Support/Cinecore` (cache), `~/Library/Logs/Cinecore` (logs) |
 | Windows engine | — | `…/Cinecore/engine` |
 
 ---
@@ -299,9 +309,9 @@ Same interface and features; these are the differences.
 
 - **One codebase, two systems.** The app lives in `mac-native/CinecoreMac`; the Windows project compiles the same sources with `CINECORE_WINDOWS` and swaps a few `Platform/*.Win.cs` files (windows, audio output, secrets, refresh rate, media keys).
 - **Video in its own window, under the UI.** madVR and MPC-VR keep their own window and Direct3D; the transparent Avalonia window sits on top with HUD and menus, so opening a menu never makes the film stutter.
-- **VideoHost**, a separate process, builds the DirectShow graph (LAV → madVR / MPC-VR + XySubFilter) and takes text commands on stdin. A renderer crash never takes the player down — and it is the same program that runs under Wine on the Mac.
+- **VideoHost**, a separate process, builds the DirectShow graph (LAV → madVR / MPC-VR + XySubFilter) and takes text commands on stdin. A renderer crash never takes the player down — and it is the same program that runs under Wine on the Mac. On Windows a film starts with madVR in about 5.5 s, and renderer settings are written only when they change.
 - **On the Mac,** VideoHost runs in Wine 6.0 ARM64 with FEX; decoding goes through a VideoToolbox bridge (≈70% CPU vs 227% in software), madVR's D3D9 frames are carried to D3D11 and presented on Metal via DXMT, and patched winemac/wined3d lock presentation to the display link (3:2 cadence at 24 Hz with 0 drops).
-- **Hand-drawn UI** on Avalonia/SkiaSharp, with an in-frame glass blur; ReadyToRun compilation on Windows to avoid JIT stutter.
+- **Hand-drawn UI** on Avalonia/SkiaSharp, with an in-frame glass blur; pages redraw only when something changes (hover, playback, data); ReadyToRun compilation on Windows to avoid JIT stutter.
 
 ---
 
@@ -317,15 +327,14 @@ dotnet build                      # VideoHost and IntroOutroDetector build along
 dotnet publish -c Release         # ReadyToRun; copies third-parties into the package
 ```
 
-Installer: **Inno Setup**, then `installer/Build-Installer-Avalonia.ps1`.
+Installer: **Inno Setup**, then `installer/Build-Installer-Avalonia.ps1`. Version and file name come from `<Version>` and `<InformationalVersion>` in `CinecoreWin.csproj`.
 
 **macOS (Apple Silicon)**
 
 ```bash
 dotnet build mac-native/CinecoreMac/CinecoreMac.csproj -c Release
 bash mac/build-native-app.sh      # .app with libmpv, FFmpeg and native libraries, ad-hoc signed
-bash mac/make-mac-release.sh      # DMG + update zip with SHA-256
-bash mac/build-engine-pack.sh     # optional Windows engine for madVR / MPC-VR
+bash mac/make-mac-release.sh      # DMG + update zip, .sha256 files, SHA-256 in the release notes
 ```
 
 The application keys for Trakt and Last.fm are not in the repository: add your own in `SecretVault.Keys.cs`.
@@ -337,12 +346,19 @@ The application keys for Trakt and Last.fm are not in the repository: add your o
 Open an [Issue](https://github.com/CinecorePlayer/CinecorePlayer/issues). For playback problems, please include:
 
 - Windows / macOS version (and Mac model)
-- GPU and renderer
+- GPU and renderer, and the active preset (shown in grey in *Video › Presets*)
 - Audio output mode (shared, exclusive, bitstream) and device
 - File format and resolution
 - Exact steps to reproduce
+- The latest `app-*.log` (Windows: `%LOCALAPPDATA%\Cinecore\Logs`; macOS: `~/Library/Logs/Cinecore`)
 
 Remove personal paths, tokens and credentials from logs before posting.
+
+---
+
+## 🛡️ Security
+
+Please **don't** report vulnerabilities in public issues. Use the repository's *Security › Report a vulnerability* page; see [`SECURITY.md`](SECURITY.md) for supported versions, scope and response times.
 
 ---
 
