@@ -131,6 +131,7 @@ Each engine has its own settings pages inside Cinecore (madVR, including *Perfor
 - **Bitstream** chosen track by track (details per platform in [Windows vs macOS](#-windows-vs-macos)); output device or *Auto / Force PCM* can change mid-film without restarting the video. On Windows, **MPC Audio Renderer** is used when installed, with automatic bitstreaming
 - **Audio delay** on the fly (`Ctrl ±`), saved per film; fixed or **curved** delay for rips that drift
 - **Automatic alignment** of an external audio track (e.g. a dub from another source), with 24 / 23.976 / 25 fps speed conversion
+- **macOS spatial audio for headphones and Mac speakers:** 5.1 and 7.1 film tracks go through Apple's spatializer instead of being downmixed to stereo. Supported AirPods can use head tracking. Works with all three video engines; madVR and MPC-VR send audio through native mpv. DTS:X is rendered in 7.1.4, and TrueHD Atmos objects are positioned in 7.1.4. This applies to headphone and Mac-speaker playback; audio through an AV receiver is unchanged.
 - **Network AV receiver control:** Denon/Marantz, Yamaha MusicCast, Onkyo/Integra/Pioneer, NAD, Anthem, UPnP. Hard-coded safety rules: reads the volume before each change, max +3 dB per step, ceiling at −20 dB, a film can only *lower* the volume at start
 - **Subtitles:** internal and external, forced-only, full ASS/SSA through XySubFilter; search and download (OpenSubtitles, Subdl, YIFY, Addic7ed; 34 languages); **automatic re-timing** by listening to the film's audio
 
@@ -371,3 +372,4 @@ Third-party components keep their own licenses: FFmpeg, libmpv and MPC Video Ren
 ---
 
 If you like Cinecore Player, a ⭐ on the repository helps others find it.
+
