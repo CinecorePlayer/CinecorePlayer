@@ -1,9 +1,9 @@
-# Cinecore Player per Mac
+# Cinecore Player per Mac — Beta 1.1 (0.1.1)
 
 Lettore multimediale per macOS: film, serie, musica, foto, dischi e server di rete in un'unica app, con la qualità video di madVR e MPC Video Renderer e un motore audio proprio per la musica.
-È il porting nativo di Cinecore Player per Windows (Beta 3.6). L'interfaccia è riscritta in Avalonia, mentre la logica di libreria, metadati, audio e Automix è in gran parte condivisa con Windows.
+Il porting nativo parte da Cinecore Player per Windows (Beta 4). 
 
-Stato: anteprima, 14/11/2026. Lo stato voce per voce è in `mac/PIANO_LAVORI_MAC.md`.
+Versione: Beta 1.1 (0.1.1). Lo stato voce per voce è in `mac/PIANO_LAVORI_MAC.md`.
 
 ---
 
@@ -12,7 +12,7 @@ Stato: anteprima, 14/11/2026. Lo stato voce per voce è in `mac/PIANO_LAVORI_MAC
 | | |
 |---|---|
 | Sistema | macOS 13 o successivo; Liquid Glass da macOS 26 (provato su macOS 27.2) |
-| Processore | Apple Silicon (arm64), provato su MacBook Air M4 |
+| Processore | Apple Silicon (arm64), M1 o successivo; provato su MacBook Air M4 |
 | Interfaccia | .NET 9 + Avalonia 11.3 (Skia), disegnata su misura; vetro vero di macOS (NSGlassEffectView, o NSVisualEffectView prima di macOS 26) |
 | Video nativo | libmpv (mpv 0.42) con Vulkan su MoltenVK; decodifica VideoToolbox |
 | Video di qualità | madVR e MPC Video Renderer con LAV Filters, sotto Wine 11 (driver winemac modificato, D3D11 tramite DXMT su Metal) |
@@ -20,7 +20,7 @@ Stato: anteprima, 14/11/2026. Lo stato voce per voce è in `mac/PIANO_LAVORI_MAC
 | Audio dei film | CoreAudio tramite libmpv. madVR e MPC-VR possono usare la stessa uscita audio nativa. |
 | Time-stretch | Rubber Band 4 (motore R3), con un WSOLA interno come riserva |
 | Componenti inclusi nel pacchetto | libmpv e dipendenze, ffmpeg/ffprobe, MoltenVK, libdvdread/libdvdnav/libdvdcss, Rubber Band (copiati da Homebrew in `Contents/Frameworks`) |
-| Lingua | italiano (inglese e spagnolo da fare) |
+| Lingua | italiano, inglese e spagnolo |
 
 ---
 
@@ -28,10 +28,11 @@ Stato: anteprima, 14/11/2026. Lo stato voce per voce è in `mac/PIANO_LAVORI_MAC
 
 ### Video
 - **Motori**: madVR, MPC-VR, mpv o Auto. Il motore scelto non cambia mai da solo: in risparmio energetico l'app avvisa e propone l'alternativa.
+- **Preset**: Automatico, Personalizzato, disattivati o scelti manualmente; include preset pronti per madVR, MPC-VR e mpv, modificabili da Impostazioni › Componenti › Preset. Automatico valuta renderer, Mac, batteria, modalità Risparmio energetico, temperatura e caratteristiche del film.
 - **Statistiche**: madVR (Ctrl+J), MPC-VR e mpv, dal menu.
 - **Profili HDR di madVR**: Immagine/HDR come scelta unica per tutti i renderer, upscaling di madVR dal menu, uscita HDR in EDR con mpv.
 - **Immagine**: cambio della frequenza dello schermo prima dell'avvio, ritaglio, dimensionamento a schermo intero, 3D (SBS/TAB → 2D) con tutti i motori, schermo intero esteso su due schermi (Maiusc+F) per i Full-SBS.
-- **Controlli**: HUD con timeline e anteprima, capitoli, ±10 s, passo singolo, scan veloce (×0,5 … ×4), PiP, "Vai a…", Salta intro / prossimo episodio, Cast.
+- **Controlli**: HUD con timeline e anteprima, capitoli, ±10 s, passo singolo, scan veloce (×0,5 … ×4), "Vai a…", Salta intro / prossimo episodio, Cast.
 - **Ripresa e volume**: ripresa dal punto lasciato, "Continua a guardare", volume ricordato per film.
 - **YouTube e indirizzi web**: tramite yt-dlp, con limite di risoluzione.
 
@@ -54,6 +55,7 @@ Stato: anteprima, 14/11/2026. Lo stato voce per voce è in `mac/PIANO_LAVORI_MAC
 
 ### Musica: Cinecore Audio Engine
 - **Passaggi fra i brani**: senza pause (gapless), dissolvenza incrociata a potenza costante, oppure **Automix**. L'Automix analizza battute, frasi, tonalità e voce, poi sceglie fra passaggi da DJ (EQ a tre bande, filtri, eco, brake, loop). Con "Sincronizzazione tempo" il brano che entra prende il tempo di quello che esce, agganciato battuta per battuta, e poi torna al suo.
+- **Mix manuale**: disegno a mano delle curve di volume, EQ e filtri; il brano in ingresso segue il tempo di quello in uscita, anche se quest'ultimo è rallentato.
 - **EQ**: 10 bande, 31 bande o parametrico, con i preset di Windows; preamplificazione.
 - **Elaborazione**: limiter true-peak, ReplayGain (brano o album), loudness, AutoEQ dinamico, crossfeed, bilanciamento, ampiezza stereo, mono.
 - **Grafici**: Spettro, VU ad ago, Spettrogramma, Onda, Loudness, Dinamica, Stereo (goniometro), Livelli con correlazione di fase, Info. Sotto ogni grafico LUFS integrato, true peak, gamma e PLR in tempo reale.
@@ -88,8 +90,6 @@ Stato: anteprima, 14/11/2026. Lo stato voce per voce è in `mac/PIANO_LAVORI_MAC
 
 ## Da fare
 - Blu-ray e UHD.
-- Inglese e spagnolo.
-- Editor del mix manuale.
 - Uscita esclusiva/bit-perfect della musica.
 - Analisi audio dal vivo dei film.
 - Stile dei sottotitoli.
@@ -108,6 +108,13 @@ Senza un adattatore che passi l'EDID originale i formati HD (TrueHD, DTS-HD MA) 
 
 L'override sperimentale dell'EDID (`CINECORE_HDMI_EDID_TEST=1`) resta disattivato nell'avvio normale.
 
+## Installare
+
+Scarica `CinecorePlayer2026-Mac-0.1.1-arm64.dmg`, aprilo e trascina **CinecorePlayer2026** in **Applicazioni**. Se Beta 1 è già installata, l'aggiornamento integrato usa il file `.zip` associato alla release. Il motore madVR/MPC Video Renderer sotto Wine (VideoHost) non cambia in questo aggiornamento; se è già presente non viene scaricato di nuovo.
+
+> [!IMPORTANT]
+> Richiede macOS 13 o successivo e un Mac Apple Silicon M1 o successivo. L'app non è notarizzata da Apple: al primo avvio fai clic destro sull'app e scegli **Apri**, oppure autorizzala in **Impostazioni di Sistema › Privacy e Sicurezza**.
+
 ## Compilare
 ```
 mac/build-native-app.sh      # crea "dist/CinecorePlayer2026.app"
@@ -116,3 +123,5 @@ mac/make-mac-release.sh      # crea il .dmg (e lo .zip per gli aggiornamenti) in
 Servono .NET 9 (`~/.dotnet`), Xcode Command Line Tools e le librerie Homebrew usate da mpv. La prima compilazione della libmpv con la patch CoreAudio richiede Meson, Ninja e pkg-config. Il pacchetto riusa la libreria compilata in `dist/mac-native/mpv-coreaudio`.
 Il runtime Wine per madVR/MPC-VR si prepara con gli script in `mac/` (vedi `mac/PIANO_LAVORI_MAC.md`).
 L'icona si rigenera con `swift mac/make-icon.swift <logo.png> <cartella.iconset>` e `iconutil`.
+
+
